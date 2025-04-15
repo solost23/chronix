@@ -1,0 +1,118 @@
+/*
+ * test program
+ */
+
+#include <iostream>
+#include <memory> 
+#include <utility>
+
+#include "chronoix/chronoix.h"
+
+void example1();
+void example2();
+void example3(); 
+
+int main(int argc, char* argv[])
+{
+    std::thread t1(example1);
+    std::thread t2(example2);
+    std::thread t3(example3);
+    if (t1.joinable())
+    {
+        t1.join();
+    }
+    if (t2.joinable())
+    {
+        t2.join();
+    }
+    if (t3.joinable())
+    {
+        t3.join();
+    }
+    
+    return 0;  
+}
+
+/*
+ * test second
+ */
+void example1()
+{
+    std::vector<std::pair<std::string, std::function<void()>>> jobs{
+        {"*/1 * * * * *", [](){ std::cout << "[任务1] 每1秒执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"*/3 * * * * *", [](){ std::cout << "[任务2] 每3秒执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"*/5 * * * * *", [](){ std::cout << "[任务3] 每5秒执行一次: " << std::time(nullptr) << std::endl; }},
+        {"*/7 * * * * *", [](){ std::cout << "[任务4] 每7秒执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"*/9 * * * * *", [](){ std::cout << "[任务5] 每9秒执行一次: " << std::time(nullptr) << std::endl; }},  
+    }; 
+
+    auto scheduler = std::make_shared<ChronoixScheduler>(); 
+
+    for (int i = 0; i != jobs.size(); i ++)
+    {
+        scheduler->add_job(jobs[i].first, jobs[i].second);
+    }
+
+    scheduler->start(); 
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+}
+
+/*
+ * test minute
+ */
+void example2()
+{
+    std::vector<std::pair<std::string, std::function<void()>>> jobs{
+        {"0 */1 * * * *", [](){ std::cout << "[任务1] 每1分执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"0 */3 * * * *", [](){ std::cout << "[任务2] 每3分执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"0 */5 * * * *", [](){ std::cout << "[任务3] 每5分执行一次: " << std::time(nullptr) << std::endl; }},
+        {"0 */7 * * * *", [](){ std::cout << "[任务4] 每7分执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"0 */9 * * * *", [](){ std::cout << "[任务5] 每9分执行一次: " << std::time(nullptr) << std::endl; }},  
+    }; 
+
+    auto scheduler = std::make_shared<ChronoixScheduler>(); 
+
+    for (int i = 0; i != jobs.size(); i ++)
+    {
+        scheduler->add_job(jobs[i].first, jobs[i].second);
+    }
+
+    scheduler->start();  
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }  
+}
+
+/*
+ * test 
+ */
+void example3()
+{
+    std::vector<std::pair<std::string, std::function<void()>>> jobs{
+        {"0 15 0 * * *", [](){ std::cout << "[任务1] 每天00:15执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"0 16 0 * * *", [](){ std::cout << "[任务2] 每天00:16执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"0 17 0 * * *", [](){ std::cout << "[任务3] 每天00:17执行一次: " << std::time(nullptr) << std::endl; }},
+        {"0 18 0 * * *", [](){ std::cout << "[任务4] 每天00:18执行一次: " << std::time(nullptr) << std::endl; }}, 
+        {"0 19 0 * * *", [](){ std::cout << "[任务5] 每天00:19执行一次: " << std::time(nullptr) << std::endl; }},  
+    }; 
+
+    auto scheduler = std::make_shared<ChronoixScheduler>(); 
+
+    for (int i = 0; i != jobs.size(); i ++)
+    {
+        scheduler->add_job(jobs[i].first, jobs[i].second);
+    }
+
+    scheduler->start();  
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }  
+}
