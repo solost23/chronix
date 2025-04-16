@@ -9,18 +9,16 @@
 #include <functional>
 #include <unordered_map>
 
-#include "croncpp.h"
-#include "thread_pool.h"
+#include "chronoix/define.h" 
+
+#include "chronoix/croncpp.h"
+#include "chronoix/thread_pool/thread_pool.h"
+#include "chronoix/persistence/persistence.h"
 
 
 class ChronoixScheduler 
 {
 public:
-    using Task = std::function<void()>;
-
-    using ErrorCallback = std::function<void(int job_id, const std::exception& e)>;
-    using SuccessCallback = std::function<void(int job_id)>; 
-
     ChronoixScheduler(size_t thread_count = std::thread::hardware_concurrency()) : running(false), next_job_id(1), thread_pool(thread_count) {}
 
     ~ChronoixScheduler()
@@ -35,7 +33,7 @@ public:
 
         cron::cronexpr expr = cron::make_cron(cron_expr);
         int job_id = next_job_id ++;
-        jobs[job_id] = Job{job_id, expr, task, cron::cron_next(expr, std::chrono::system_clock::now()), false, error_callback, success_callback}; 
+        jobs[job_id] = Job{job_id, expr, cron_expr, task, cron::cron_next(expr, std::chrono::system_clock::now()), false, error_callback, success_callback}; 
         return job_id; 
     }
 
@@ -171,18 +169,58 @@ public:
         }
     }
 
-private:
-    struct Job
+    // set persistence
+    void set_persistence(std::shared_ptr<Persistence<Job>> persistence_backend)
     {
-        int id;
-        cron::cronexpr expr;
-        Task task;
-        std::chrono::system_clock::time_point next;
-        bool paused;
-        ErrorCallback error_callback;
-        SuccessCallback success_callback; 
-    }; 
+        persistence = persistence_backend; 
+    }  
 
+    void save_state()
+    {
+        if (persistence)
+        {
+            std::lock_guard<std::mutex> lock(mutex); 
+            std::vector<Job> snapshot; 
+            for (auto& [id, job] : jobs)
+            {
+                snapshot.push_back(job);
+            }
+            persistence->save_job(snapshot); 
+        }
+    }
+
+    void load_state()
+    {
+        if (persistence)
+        {
+            auto jobs = persistence->load_jobs(); 
+
+            std::lock_guard<std::mutex> lock(mutex);
+            for (auto& job : jobs)
+            {
+                if (job_initializers_.find(job.id) != job_initializers_.end())
+                {
+                    job_initializers_[job.id](job); 
+                }
+                else 
+                {
+                    std::cerr << "[Warning] No initializer found for job " << job.id << "\n";
+                }
+                jobs[job.id] = job; 
+            }
+        }
+    }
+
+    void register_job_initializer(int job_id, JobInitializer initializer)
+    {
+        if (initializer)
+        {
+            std::lock_guard<std::mutex> lock(mutex); 
+            job_initializers_[job_id] = initializer; 
+        }
+    }
+
+private:
     std::unordered_map<int, Job> jobs;
     std::thread worker;
     std::atomic<bool> running;
@@ -190,4 +228,8 @@ private:
     std::mutex mutex;
 
     ThreadPool thread_pool; 
+
+    std::shared_ptr<Persistence<Job>> persistence; 
+
+    std::unordered_map<int, JobInitializer> job_initializers_;
 }; 
