@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include "croncpp.h"
+#include "thread_pool.h"
 
 
 class ChronoixScheduler 
@@ -17,7 +18,7 @@ class ChronoixScheduler
 public:
     using Task = std::function<void()>;
 
-    ChronoixScheduler() : running(false), next_job_id(1) {}
+    ChronoixScheduler(size_t thread_count = std::thread::hardware_concurrency()) : running(false), next_job_id(1), thread_pool(thread_count) {}
 
     ~ChronoixScheduler()
     {
@@ -96,16 +97,26 @@ public:
 
                         if (now >= job.next)
                         {
-                            std::thread([task = job.task](){
-                                try
-                                {
-                                    task();
-                                }
-                                catch (...) 
-                                {
-                                    std::cerr << "任务执行出错" << std::endl;
-                                }
-                            }).detach();
+                            // std::thread([task = job.task](){
+                            //     try
+                            //     {
+                            //         task();
+                            //     }
+                            //     catch (...) 
+                            //     {
+                            //         std::cerr << "任务执行出错" << std::endl;
+                            //     }
+                            // }).detach();
+
+                            try
+                            {
+                                thread_pool.submit(job.task); 
+                            }
+                            catch(const std::exception& e)
+                            {
+                                std::cerr << "task submit failed: " << e.what() << '\n';
+                            }
+                            
                             job.next = cron::cron_next(job.expr, now); 
                         }
 
@@ -147,4 +158,6 @@ private:
     std::atomic<bool> running;
     std::atomic<int> next_job_id;
     std::mutex mutex;
+
+    ThreadPool thread_pool; 
 }; 

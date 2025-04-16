@@ -5,6 +5,6 @@ if [ -d "build" ]; then
 fi 
 mkdir build && cd build 
 
-cmake ../src/ && make -j && $1
+cmake ../src/ && make -j && ./chronix 
 
 cd .. 

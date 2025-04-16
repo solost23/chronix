@@ -46,7 +46,7 @@ void example1()
         {"*/9 * * * * *", [](){ std::cout << "[任务5] 每9秒执行一次: " << std::time(nullptr) << std::endl; }},  
     }; 
 
-    auto scheduler = std::make_shared<ChronoixScheduler>(); 
+    auto scheduler = std::make_shared<ChronoixScheduler>(4); 
 
     for (int i = 0; i != jobs.size(); i ++)
     {
@@ -74,7 +74,7 @@ void example2()
         {"0 */9 * * * *", [](){ std::cout << "[任务5] 每9分执行一次: " << std::time(nullptr) << std::endl; }},  
     }; 
 
-    auto scheduler = std::make_shared<ChronoixScheduler>(); 
+    auto scheduler = std::make_shared<ChronoixScheduler>(4); 
 
     for (int i = 0; i != jobs.size(); i ++)
     {
@@ -102,7 +102,7 @@ void example3()
         {"0 19 0 * * *", [](){ std::cout << "[任务5] 每天00:19执行一次: " << std::time(nullptr) << std::endl; }},  
     }; 
 
-    auto scheduler = std::make_shared<ChronoixScheduler>(); 
+    auto scheduler = std::make_shared<ChronoixScheduler>(4); 
 
     for (int i = 0; i != jobs.size(); i ++)
     {
