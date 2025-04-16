@@ -11,12 +11,14 @@
 void example1();
 void example2();
 void example3(); 
+void example4(); 
 
 int main(int argc, char* argv[])
 {
     std::thread t1(example1);
     std::thread t2(example2);
     std::thread t3(example3);
+    std::thread t4(example4); 
     if (t1.joinable())
     {
         t1.join();
@@ -28,6 +30,10 @@ int main(int argc, char* argv[])
     if (t3.joinable())
     {
         t3.join();
+    }
+    if (t4.joinable())
+    {
+        t4.join(); 
     }
     
     return 0;  
@@ -115,4 +121,36 @@ void example3()
     {
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }  
+}
+
+/*
+ * test callback
+ */
+void example4()
+{
+    std::vector<std::pair<std::string, std::function<void()>>> jobs{
+        {"*/5 * * * * *", [](){ std::cout << "[任务1] 每5秒执行一次: " << std::time(nullptr) << std::endl; throw std::runtime_error("[任务1] 执行失败"); }}, 
+        {"*/8 * * * * *", [](){ std::cout << "[任务2] 每8秒执行一次: " << std::time(nullptr) << std::endl; }}, 
+    }; 
+
+    auto scheduler = std::make_shared<ChronoixScheduler>(4);
+
+    auto error_callback = [](int job_id, const std::exception& e) {
+        std::cerr << "任务ID: " << job_id << " 执行失败，错误: " << e.what() << std::endl; 
+    }; 
+    auto success_callback = [](int job_id) {
+        std::cout << "任务ID: " << job_id << " 执行成功" << std::endl; 
+    };
+
+    for (int i = 0; i != jobs.size(); i ++)
+    {
+        scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback);
+    }
+
+    scheduler->start();
+
+    while(true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5)); 
+    }
 }

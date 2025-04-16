@@ -18,6 +18,9 @@ class ChronoixScheduler
 public:
     using Task = std::function<void()>;
 
+    using ErrorCallback = std::function<void(int job_id, const std::exception& e)>;
+    using SuccessCallback = std::function<void(int job_id)>; 
+
     ChronoixScheduler(size_t thread_count = std::thread::hardware_concurrency()) : running(false), next_job_id(1), thread_pool(thread_count) {}
 
     ~ChronoixScheduler()
@@ -26,13 +29,13 @@ public:
     }
 
     // task add
-    int add_job(const std::string& cron_expr, Task task)
+    int add_job(const std::string& cron_expr, Task task, ErrorCallback error_callback = nullptr, SuccessCallback success_callback = nullptr)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
         cron::cronexpr expr = cron::make_cron(cron_expr);
         int job_id = next_job_id ++;
-        jobs[job_id] = Job{job_id, expr, task, cron::cron_next(expr, std::chrono::system_clock::now()), false}; 
+        jobs[job_id] = Job{job_id, expr, task, cron::cron_next(expr, std::chrono::system_clock::now()), false, error_callback, success_callback}; 
         return job_id; 
     }
 
@@ -108,14 +111,39 @@ public:
                             //     }
                             // }).detach();
 
-                            try
-                            {
-                                thread_pool.submit(job.task); 
-                            }
-                            catch(const std::exception& e)
-                            {
-                                std::cerr << "task submit failed: " << e.what() << '\n';
-                            }
+                            // try
+                            // {
+                            //     thread_pool.submit(job.task); 
+                            //     if (job.success_callback)
+                            //     {
+                            //         job.success_callback(job.id); 
+                            //     }
+                            // }
+                            // catch(const std::exception& e)
+                            // {
+
+                            //     std::cerr << "task submit failed: " << e.what() << '\n';
+                            // }
+
+                            auto wrapped_task = [this, job]() {
+                                try 
+                                {
+                                    job.task(); 
+                                    if (job.success_callback)
+                                    {
+                                        job.success_callback(job.id); 
+                                    }
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    if (job.error_callback)
+                                    {
+                                        job.error_callback(job.id, e); 
+                                    }
+                                }
+                            }; 
+
+                            thread_pool.submit(wrapped_task); 
                             
                             job.next = cron::cron_next(job.expr, now); 
                         }
@@ -151,6 +179,8 @@ private:
         Task task;
         std::chrono::system_clock::time_point next;
         bool paused;
+        ErrorCallback error_callback;
+        SuccessCallback success_callback; 
     }; 
 
     std::unordered_map<int, Job> jobs;
