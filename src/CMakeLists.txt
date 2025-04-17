@@ -28,6 +28,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
+SET(HTYJ_PUBLIC_SOLUTION_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
 # set(CMAKE_OSX_ARCHITECTURES arm64)
 
 execute_process(
@@ -41,3 +43,11 @@ set(CMAKE_OSX_ARCHITECTURES ${ARCH})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/main.cpp)
+
+find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${HTYJ_PUBLIC_SOLUTION_ROOT_DIR}/lib/mysqlx)
+if(mysqlcppconnxLIBRARY)
+    message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
+    target_link_libraries(${PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
+else()
+    message(FATAL_ERROR "Could not find mysqlcppconnx library")
+endif()

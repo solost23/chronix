@@ -1,0 +1,12 @@
+CREATE DATABASE IF NOT EXISTS chronix CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE chronix;
+
+CREATE DATABASE IF NOT EXISTS chronix;
+USE chronix;
+
+CREATE TABLE IF NOT EXISTS jobs (
+    id INT PRIMARY KEY,
+    expr VARCHAR(255),
+    paused BOOLEAN
+);

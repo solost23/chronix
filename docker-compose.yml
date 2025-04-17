@@ -1,0 +1,24 @@
+version: "3.5"
+
+services:
+  mysql:
+    image: mysql:8.0.36
+    container_name: chronix-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "123"
+      TZ: "Asia/Shanghai"
+    ports:
+      - "3306:3306"
+      - "33036:33060"
+    volumes:
+      - "./sql:/docker-entrypoint-initdb.d"
+      - "/etc/mysql/conf.d:/etc/mysql/conf.d"
+      - "/var/lib/mysql:/var/lib/mysql"
+      - "/var/log/mysql:/var/log/mysql"
+    networks:
+      - app-net  
+
+networks:
+  app-net:
+    driver: bridge
