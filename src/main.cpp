@@ -149,6 +149,10 @@ void example4()
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
 
+    auto start_callback = [](int job_id) {
+        printer("任务ID: ", job_id, " 开始执行");
+    }; 
+
     auto error_callback = [](int job_id, const std::exception& e) {
         printer("任务ID: ", job_id, " 执行失败，错误: ", e.what());
     }; 
@@ -158,7 +162,7 @@ void example4()
 
     for (int i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback);
+        scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback, start_callback);
     }
 
     scheduler->start();

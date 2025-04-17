@@ -27,13 +27,25 @@ public:
     }
 
     // task add
-    int add_job(const std::string& cron_expr, Task task, ErrorCallback error_callback = nullptr, SuccessCallback success_callback = nullptr)
+    int add_job(
+        const std::string& cron_expr, 
+        Task task, ErrorCallback 
+        error_callback = nullptr, 
+        SuccessCallback success_callback = nullptr, 
+        StartCallback start_callback = nullptr
+    )
     {
         std::lock_guard<std::mutex> lock(mutex);
 
         cron::cronexpr expr = cron::make_cron(cron_expr);
         int job_id = next_job_id ++;
-        jobs[job_id] = Job{job_id, expr, cron_expr, task, cron::cron_next(expr, std::chrono::system_clock::now()), false, error_callback, success_callback}; 
+        jobs[job_id] = Job{
+            job_id, 
+            expr, 
+            cron_expr, 
+            task, 
+            cron::cron_next(expr, std::chrono::system_clock::now()), 
+            false, error_callback, success_callback, start_callback}; 
         return job_id; 
     }
 
@@ -126,6 +138,10 @@ public:
                             auto wrapped_task = [this, job]() {
                                 try 
                                 {
+                                    if (job.start_callback)
+                                    {
+                                        job.start_callback(job.id);
+                                    }
                                     job.task(); 
                                     if (job.success_callback)
                                     {
