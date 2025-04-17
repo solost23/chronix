@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory> 
 #include <utility>
+#include <vector> 
 
 #include "chronix/chronix.h"
 
@@ -17,35 +18,21 @@ void example6();
 
 int main(int argc, char* argv[])
 {
-    std::thread t1(example1);
-    std::thread t2(example2);
-    std::thread t3(example3);
-    std::thread t4(example4); 
-    std::thread t5(example5); 
-    std::thread t6(example6); 
-    if (t1.joinable())
+    std::vector<std::thread> examples{};
+
+    examples.emplace_back(example1); 
+    examples.emplace_back(example2);  
+    examples.emplace_back(example3);  
+    examples.emplace_back(example4);  
+    examples.emplace_back(example5);  
+    examples.emplace_back(example6);  
+
+    for (auto& example : examples)
     {
-        t1.join();
-    }
-    if (t2.joinable())
-    {
-        t2.join();
-    }
-    if (t3.joinable())
-    {
-        t3.join();
-    }
-    if (t4.joinable())
-    {
-        t4.join(); 
-    }
-    if (t5.joinable())
-    {
-        t5.join(); 
-    }
-    if (t6.joinable())
-    {
-        t6.join(); 
+       if (example.joinable())
+       {
+           example.join();
+       } 
     }
     
     return 0;  
