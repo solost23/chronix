@@ -68,7 +68,7 @@ void example1()
 
     auto scheduler = std::make_shared<ChronixScheduler>(4); 
 
-    for (int i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_job(jobs[i].first, jobs[i].second);
     }
@@ -96,7 +96,7 @@ void example2()
 
     auto scheduler = std::make_shared<ChronixScheduler>(4); 
 
-    for (int i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_job(jobs[i].first, jobs[i].second);
     }
@@ -124,7 +124,7 @@ void example3()
 
     auto scheduler = std::make_shared<ChronixScheduler>(4); 
 
-    for (int i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_job(jobs[i].first, jobs[i].second);
     }
@@ -160,7 +160,7 @@ void example4()
         printer("任务ID: ", job_id, " 执行成功");
     };
 
-    for (int i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback, start_callback);
     }
@@ -194,7 +194,7 @@ void example5()
         printer("任务ID: ", job_id, " 执行成功");
     };
 
-    for (int i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback);
     }
@@ -251,7 +251,7 @@ void example6()
         printer("任务ID: ", job_id, " 执行成功");
     };
 
-    for (int i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback);
     }
