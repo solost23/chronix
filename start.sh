@@ -5,6 +5,10 @@ if [ -d "build" ]; then
 fi 
 mkdir build && cd build 
 
-cmake ../src/ && make -j && ./chronix 
+# 编译
+cmake ../src/ && make -j
+# 删除临时文件
+cd .. && rm -rf build 
 
-cd .. 
+# 执行
+cd ./bin && ./*

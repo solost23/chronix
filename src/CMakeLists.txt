@@ -17,10 +17,9 @@
 
 # # 添加可执行文件
 # add_executable(main ${CMAKE_SOURCE_DIR}/main.cpp)
-
-cmake_minimum_required(VERSION 3.10)
 set(PROJECT_NAME chronix)
-project(${PROJECT_NAME})
+set(VERSION_NUMBER "1.0.0" CACHE STRING "Version")
+set(CHRONIX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,9 +27,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
-SET(HTYJ_PUBLIC_SOLUTION_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(CMAKE_BUILD_TYPE "Debug")
 
-# set(CMAKE_OSX_ARCHITECTURES arm64)
+cmake_policy(SET CMP0048 NEW)
+project(${PROJECT_NAME} VERSION 1.0.0 LANGUAGES C CXX)
+
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+
+add_compile_options(-Wall -fPIC)
+message(STATUS "version: ${VERSION_NUMBER}")
+
+# 设置可执行文件输出目录
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CHRONIX_ROOT_DIR}/bin)
+#代码目录
+set(SOURCE_CODE_DIR ${CHRONIX_ROOT_DIR}/src)
+
+INCLUDE_DIRECTORIES(
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+file(GLOB_RECURSE SELF_PROJECT_SOURCE_FILES
+  ${SOURCE_CODE_DIR}/main.cpp
+)
 
 execute_process(
     COMMAND uname -m
@@ -40,12 +58,15 @@ execute_process(
 message(STATUS "Detected architecture: ${ARCH}")
 set(CMAKE_OSX_ARCHITECTURES ${ARCH})
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+ADD_EXECUTABLE(${PROJECT_NAME} ${SELF_PROJECT_SOURCE_FILES})
 
-add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/main.cpp)
+# 添加版本号宏定义
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    VERSION="${VERSION_NUMBER}"
+)
 
 if (${ARCH} STREQUAL "x86_64")
-    find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${HTYJ_PUBLIC_SOLUTION_ROOT_DIR}/lib/mysqlx_x86_64)
+    find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${CHRONIX_ROOT_DIR}/lib/mysqlx_x86_64)
     if(mysqlcppconnxLIBRARY)
         message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
         target_link_libraries(${PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
@@ -53,7 +74,7 @@ if (${ARCH} STREQUAL "x86_64")
         message(FATAL_ERROR "Could not find mysqlcppconnx library")
     endif()
 elseif (${ARCH} STREQUAL "arm64")
-    find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${HTYJ_PUBLIC_SOLUTION_ROOT_DIR}/lib/mysqlx_arm64)
+    find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${CHRONIX_ROOT_DIR}/lib/mysqlx_arm64)
     if(mysqlcppconnxLIBRARY)
         message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
         target_link_libraries(${PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
@@ -61,3 +82,5 @@ elseif (${ARCH} STREQUAL "arm64")
         message(FATAL_ERROR "Could not find mysqlcppconnx library")
     endif()
 endif()
+
+# 下面可设置安装相关

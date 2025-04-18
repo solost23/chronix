@@ -1,0 +1,17 @@
+[
+    {
+        "expr": "*/20 * * * * *",
+        "id": 3,
+        "paused": false
+    },
+    {
+        "expr": "*/10 * * * * *",
+        "id": 2,
+        "paused": false
+    },
+    {
+        "expr": "*/5 * * * * *",
+        "id": 1,
+        "paused": false
+    }
+]
