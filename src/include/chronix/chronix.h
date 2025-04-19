@@ -19,7 +19,8 @@
 class ChronixScheduler 
 {
 public:
-    ChronixScheduler(size_t thread_count = std::thread::hardware_concurrency()) : running(false), next_job_id(1), thread_pool(thread_count) {}
+    ChronixScheduler(size_t thread_count = std::thread::hardware_concurrency()) 
+        : running(false), next_job_id(1), thread_pool(thread_count) {}
 
     ~ChronixScheduler()
     {
@@ -29,8 +30,8 @@ public:
     // task add
     int add_job(
         const std::string& cron_expr, 
-        Task task, ErrorCallback 
-        error_callback = nullptr, 
+        Task task, 
+        ErrorCallback error_callback = nullptr, 
         SuccessCallback success_callback = nullptr, 
         StartCallback start_callback = nullptr
     )
@@ -39,13 +40,21 @@ public:
 
         cron::cronexpr expr = cron::make_cron(cron_expr);
         int job_id = next_job_id ++;
-        jobs[job_id] = Job{
+        auto next_time = cron::cron_next(expr, std::chrono::system_clock::now()); 
+
+        job_queue.push({job_id, next_time});
+        job_map[job_id] = Job{
             job_id, 
             expr, 
             cron_expr, 
-            task, 
-            cron::cron_next(expr, std::chrono::system_clock::now()), 
-            false, error_callback, success_callback, start_callback}; 
+            task,  
+            next_time, 
+            false, 
+            error_callback, 
+            success_callback, 
+            start_callback
+        };
+
         return job_id; 
     }
 
@@ -54,9 +63,9 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        if (jobs.count(job_id))
+        if (job_map.count(job_id))
         {
-            jobs.erase(job_id); 
+            job_map.erase(job_id); 
         }
     }
 
@@ -65,9 +74,9 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        if (jobs.count(job_id))
+        if (job_map.count(job_id))
         {
-            jobs[job_id].paused = true;
+            job_map[job_id].paused = true;
         }
     }
 
@@ -76,9 +85,9 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        if (jobs.count(job_id))
+        if (job_map.count(job_id))
         {
-            jobs[job_id].paused = false; 
+            job_map[job_id].paused = false; 
         }
     }
 
@@ -95,81 +104,69 @@ public:
         worker = std::thread([this](){
             while (running)
             {
-                auto now = std::chrono::system_clock::now();
-                std::chrono::system_clock::time_point next_wakeup = now + std::chrono::hours(24); 
+                std::unique_lock<std::mutex> lock(mutex); 
 
+                if (job_queue.empty())
                 {
-                    std::lock_guard<std::mutex> lock(mutex); 
-                    
-                    for (auto& [id, job] : jobs)
-                    {
-                        if (job.paused)
-                        {
-                            continue;
-                        }
+                    lock.unlock();
 
-                        if (now >= job.next)
-                        {
-                            // std::thread([task = job.task](){
-                            //     try
-                            //     {
-                            //         task();
-                            //     }
-                            //     catch (...) 
-                            //     {
-                            //         std::cerr << "任务执行出错" << std::endl;
-                            //     }
-                            // }).detach();
-
-                            // try
-                            // {
-                            //     thread_pool.submit(job.task); 
-                            //     if (job.success_callback)
-                            //     {
-                            //         job.success_callback(job.id); 
-                            //     }
-                            // }
-                            // catch(const std::exception& e)
-                            // {
-
-                            //     std::cerr << "task submit failed: " << e.what() << '\n';
-                            // }
-
-                            auto wrapped_task = [this, job]() {
-                                try 
-                                {
-                                    if (job.start_callback)
-                                    {
-                                        job.start_callback(job.id);
-                                    }
-                                    job.task(); 
-                                    if (job.success_callback)
-                                    {
-                                        job.success_callback(job.id); 
-                                    }
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    if (job.error_callback)
-                                    {
-                                        job.error_callback(job.id, e); 
-                                    }
-                                }
-                            }; 
-
-                            thread_pool.submit(wrapped_task); 
-                            
-                            job.next = cron::cron_next(job.expr, now); 
-                        }
-
-                        if (job.next < next_wakeup)
-                        {
-                            next_wakeup = job.next; 
-                        }
-                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    continue; 
                 }
-                
-                std::this_thread::sleep_until(next_wakeup); 
+
+                JobNode next_node = job_queue.top();
+
+                if (!job_map.count(next_node.id))
+                {
+                    job_queue.pop();
+
+                    lock.unlock();
+                    continue; 
+                }
+
+                auto now = std::chrono::system_clock::now();
+                if (now >= next_node.next)
+                { 
+                    job_queue.pop();
+                    auto& job = job_map[next_node.id]; 
+
+                    if (!job.paused)
+                    {
+                        auto wrapped_task = [this, job]() {
+                            try 
+                            {
+                                if (job.start_callback)
+                                {
+                                    job.start_callback(job.id);
+                                }
+                                job.task(); 
+                                if (job.success_callback)
+                                {
+                                    job.success_callback(job.id); 
+                                }
+                            }
+                            catch (const std::exception& e)
+                            {
+                                if (job.error_callback)
+                                {
+                                    job.error_callback(job.id, e); 
+                                }
+                            }
+                        }; 
+                        thread_pool.submit(wrapped_task);
+                    }
+                    
+                    job.next = cron::cron_next(job.expr, now);
+                    job_queue.push({job.id, job.next});
+
+                    lock.unlock();
+                }
+                else 
+                {
+                    lock.unlock();
+                    
+                    std::this_thread::sleep_until(next_node.next);
+                }
             }
         }); 
     }
@@ -197,7 +194,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(mutex); 
             std::vector<Job> snapshot; 
-            for (auto& [id, job] : jobs)
+            for (auto& [id, job] : job_map)
             {
                 snapshot.push_back(job);
             }
@@ -222,7 +219,8 @@ public:
                 {
                     std::cerr << "[Warning] No initializer found for job " << job.id << "\n";
                 }
-                jobs[job.id] = job; 
+                job_map[job.id] = job; 
+                job_queue.push({job.id, job.next});
             }
         }
     }
@@ -237,7 +235,8 @@ public:
     }
 
 private:
-    std::unordered_map<int, Job> jobs;
+    std::priority_queue<JobNode, std::vector<JobNode>, std::greater<JobNode>> job_queue; 
+    std::unordered_map<int, Job> job_map;
     std::thread worker;
     std::atomic<bool> running;
     std::atomic<int> next_job_id;

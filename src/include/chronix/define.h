@@ -23,4 +23,15 @@ struct Job
     StartCallback start_callback;
 };
 
+struct JobNode 
+{
+    int id;
+    std::chrono::system_clock::time_point next;
+
+    bool operator>(const JobNode& other) const 
+    {
+        return next > other.next;
+    }
+}; 
+
 using JobInitializer = std::function<void(Job&)>;
