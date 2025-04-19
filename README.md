@@ -14,7 +14,7 @@ Chronix is a lightweight, high-performance C++ task scheduler that supports Cron
 
 - ⏱️ **Cron Expression Scheduling**: Supports second-level precision
 - 🧵 **Thread Pool Concurrency**: Concurrent task scheduling with high performance
-- 🧩 **Task Hook Mechanism**: Supports start, success, and failure callbacks
+- 🧩 **Task Hook Mechanism**: Supports start, success, end, and failure callbacks
 - 🔄 **Task Persistence**: Task state can be saved and restored
 - ⏯️ **Task Control**: Supports adding, pausing, resuming, and removing tasks
 
@@ -32,21 +32,14 @@ auto scheduler = std::make_shared<ChronixScheduler>(4);
 ### 2. Add a Scheduled Task
 
 ```cpp
-int job_id = scheduler.add_job(
-    "*/10 * * * * *",  // Run every 10 seconds
-    []() {
-        std::cout << "Task executing" << std::endl;
-    },
-    [](int id, const std::exception& e) {
-        std::cerr << "Task " << id << " error: " << e.what() << std::endl;
-    },
-    [](int id) {
-        std::cout << "Task " << id << " success" << std::endl;
-    },
-    [](int id) {
-        std::cout << "Task " << id << " starting" << std::endl;
-    }
-);
+// Execute every 10 seconds
+int job_id = scheduler.add_job("*/10 * * * * *", []() { std::cout << "Job executing" << std::endl; });
+
+scheduler->set_start_callback([](int id) { std::cout << "Job " << id << " started" << std::endl; });
+scheduler->set_success_callback([](int id) { std::cout << "Job " << id << " completed successfully" << std::endl; });
+scheduler->set_error_callback([](int id, std::exception& e) { std::cerr << "Job " << id << " failed: " << e.what() << std::endl; });
+// You can choose to persist the job state here
+scheduler->set_end_callback([](int id) { std::cout << "Job " << id << " finished" << std::endl; });
 ```
 
 ### 3. Control Task State
@@ -75,7 +68,7 @@ scheduler.register_job_initializer(job_id, [](Job& job) {
 ```cpp
 scheduler.start();
 ```
-For more detailed usage, refer to the /src/main.cpp file.
+For more detailed usage, refer to the src/main.cpp file.
 
 --- 
 

@@ -14,7 +14,7 @@
 
 - ⏱️ **Cron 表达式调度**：支持秒级精度
 - 🧵 **线程池并发执行**：任务并发调度，性能强悍
-- 🧩 **任务钩子机制**：支持开始、成功、失败回调
+- 🧩 **任务钩子机制**：支持开始、成功、结束、失败回调
 - 🔄 **任务持久化**：任务状态可保存与恢复
 - ⏯️ **任务控制**：支持添加、暂停、恢复、删除任务
 
@@ -32,21 +32,14 @@ auto scheduler = std::make_shared<ChronixScheduler>(4);
 ### 2. 添加定时任务
 
 ```cpp
-int job_id = scheduler.add_job(
-    "*/10 * * * * *",  // 每 10 秒执行
-    []() {
-        std::cout << "任务执行" << std::endl;
-    },
-    [](int id, const std::exception& e) {
-        std::cerr << "任务 " << id << " 出错: " << e.what() << std::endl;
-    },
-    [](int id) {
-        std::cout << "任务 " << id << " 成功" << std::endl;
-    },
-    [](int id) {
-        std::cout << "任务 " << id << " 开始执行" << std::endl;
-    }
-);
+// 每 10 秒执行一次
+int job_id = scheduler.add_job("*/10 * * * * *", []() { std::cout << "任务执行" << std::endl; });
+
+scheduler->set_start_callback([](int id) { std::cout << "任务 " << id << " 开始执行" << std::endl; });
+scheduler->set_success_callback([](int id) { std::cout << "任务 " << id << " 执行成功" << std::endl; });
+scheduler->set_error_callback([](int id, std::exception& e) { std::cerr << "任务 " << id << " 执行失败: " << e.what() << std::endl; });
+// 这里可选择持久化任务状态
+scheduler->set_end_callback([](int id) { std::cout << "任务" << id << " 执行结束" << std::endl; });
 ```
 
 ### 3. 控制任务状态
@@ -75,7 +68,7 @@ scheduler.register_job_initializer(job_id, [](Job& job) {
 ```cpp
 scheduler.start();
 ```
-更详细的使用案例可查看 /src/main.cpp 文件。
+更详细的使用案例可查看 src/main.cpp 文件。
 
 ---
 

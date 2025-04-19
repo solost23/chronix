@@ -2,16 +2,19 @@
     {
         "expr": "*/20 * * * * *",
         "id": 3,
-        "paused": false
+        "result": "Unknown",
+        "status": "Pending"
     },
     {
         "expr": "*/10 * * * * *",
         "id": 2,
-        "paused": false
+        "result": "Unknown",
+        "status": "Pending"
     },
     {
         "expr": "*/5 * * * * *",
         "id": 1,
-        "paused": false
+        "result": "Unknown",
+        "status": "Pending"
     }
 ]

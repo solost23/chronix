@@ -28,13 +28,7 @@ public:
     }
 
     // task add
-    int add_job(
-        const std::string& cron_expr, 
-        Task task, 
-        ErrorCallback error_callback = nullptr, 
-        SuccessCallback success_callback = nullptr, 
-        StartCallback start_callback = nullptr
-    )
+    int add_job(const std::string& cron_expr, Task task)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -49,46 +43,94 @@ public:
             cron_expr, 
             task,  
             next_time, 
-            false, 
-            error_callback, 
-            success_callback, 
-            start_callback
+            nullptr, 
+            nullptr, 
+            nullptr, 
+            nullptr, 
+            JobStatus::Pending, 
         };
 
         return job_id; 
     }
 
-    // task remove
+    void set_start_callback(int job_id, StartCallback callback)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+        job_map[job_id].start_callback = callback;
+    }
+
+    void set_success_callback(int job_id, SuccessCallback callback)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+        job_map[job_id].success_callback = callback;
+    }
+
+    void set_error_callback(int job_id, ErrorCallback callback)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+        job_map[job_id].error_callback = callback;
+    }
+
+    void set_end_callback(int job_id, EndCallback callback)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+        job_map[job_id].end_callback = callback;
+    }
+
+    // remove job
     void remove_job(int job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        if (job_map.count(job_id))
+        if (!job_map.count(job_id))
         {
-            job_map.erase(job_id); 
+            throw std::runtime_error("Job ID not found");
         }
+        job_map.erase(job_id); 
     }
 
-    // task stop
+    // pause job
     void pause_job(int job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        if (job_map.count(job_id))
+        if (!job_map.count(job_id))
         {
-            job_map[job_id].paused = true;
+            throw std::runtime_error("Job ID not found");
         }
+        job_map[job_id].status = JobStatus::Paused; 
     }
 
-    // task resume
+    // resume job
     void resume_job(int job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        if (job_map.count(job_id))
+        if (!job_map.count(job_id))
         {
-            job_map[job_id].paused = false; 
+            throw std::runtime_error("Job ID not found");
         }
+        job_map[job_id].status = JobStatus::Pending; 
     }
 
     // scheduler start
@@ -130,16 +172,29 @@ public:
                     job_queue.pop();
                     auto& job = job_map[next_node.id]; 
 
-                    if (!job.paused)
+                    if (job.status == JobStatus::Pending)
                     {
-                        auto wrapped_task = [this, job]() {
+                        auto wrapped_task = [this, &job]() {
                             try 
                             {
+                                {
+                                    std::lock_guard<std::mutex> lock(mutex); 
+                                    job.status = JobStatus::Running; 
+                                }
+
                                 if (job.start_callback)
                                 {
                                     job.start_callback(job.id);
                                 }
+
                                 job.task(); 
+
+                                {
+                                    std::lock_guard<std::mutex> lock(mutex);
+                                    job.status = JobStatus::Pending;
+                                    job.result = JobResult::Success;  
+                                }
+
                                 if (job.success_callback)
                                 {
                                     job.success_callback(job.id); 
@@ -147,10 +202,21 @@ public:
                             }
                             catch (const std::exception& e)
                             {
+                                {
+                                    std::lock_guard<std::mutex> lock(mutex); 
+                                    job.status = JobStatus::Pending;
+                                    job.result = JobResult::Failed;  
+                                }
+
                                 if (job.error_callback)
                                 {
                                     job.error_callback(job.id, e); 
                                 }
+                            }
+
+                            if (job.end_callback)
+                            {
+                                job.end_callback(job.id); 
                             }
                         }; 
                         thread_pool.submit(wrapped_task);
@@ -231,6 +297,52 @@ public:
         {
             std::lock_guard<std::mutex> lock(mutex); 
             job_initializers_[job_id] = initializer; 
+        }
+    }
+
+    // get job status
+    JobStatus get_job_status(int job_id)
+    {
+        std::lock_guard<std::mutex> lock(mutex); 
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+        return job_map[job_id].status;
+    }
+
+    // status to string
+    std::string status_to_string(JobStatus status)
+    {
+        switch(status)
+        {
+            case JobStatus::Pending: return "Pending";
+            case JobStatus::Running: return "Running";
+            case JobStatus::Paused: return "Paused";
+        }
+    }
+
+    // get job last result
+    JobResult get_job_result(int job_id)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+        return job_map[job_id].result; 
+    }
+
+    // result to string
+    std::string result_to_string(JobResult result)
+    {
+        switch(result)
+        {
+            case JobResult::Success: return "Success";
+            case JobResult::Failed: return "Failed";
+            case JobResult::Unknown: return "Unknown"; 
         }
     }
 

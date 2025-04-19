@@ -26,6 +26,41 @@ public:
 
     // save task
     virtual void save(const std::vector<T>& jobs) = 0; 
+
+
+    virtual std::string to_string(JobStatus status) 
+    {
+        switch (status) {
+            case JobStatus::Pending: return "Pending";
+            case JobStatus::Running: return "Running";
+            case JobStatus::Paused:  return "Paused";
+        }
+        return "Pending";
+    }
+
+    virtual std::string to_string(JobResult result) 
+    {
+        switch (result) {
+            case JobResult::Success: return "Success";
+            case JobResult::Failed:  return "Failed";
+            case JobResult::Unknown: return "Unknown";
+        }
+        return "Unknown";
+    }
+
+    virtual JobStatus from_string_status(const std::string& s) 
+    {
+        if (s == "Running") return JobStatus::Running;
+        if (s == "Paused") return JobStatus::Paused;
+        return JobStatus::Pending;
+    }
+
+    virtual JobResult from_string_result(const std::string& s) 
+    {
+        if (s == "Success") return JobResult::Success;
+        if (s == "Failed") return JobResult::Failed;
+        return JobResult::Unknown;
+    }
 }; 
 
 /*
@@ -77,7 +112,8 @@ private:
         return nlohmann::json{
             {"id", job.id}, 
             {"expr", job.expr_str}, 
-            {"paused", job.paused}
+            {"status", this->to_string(job.status)},
+            {"result", this->to_string(job.result)}
         }; 
     }
 
@@ -87,7 +123,8 @@ private:
         job.id = j.at("id").get<int>(); 
         job.expr_str = j.at("expr").get<std::string>();
         job.expr = cron::make_cron(job.expr_str);
-        job.paused = j.at("paused").get<bool>(); 
+        job.status = this->from_string_status(j.value("status", "Pending"));
+        job.result = this->from_string_result(j.value("result", "Unknown"));
         job.next = cron::cron_next(job.expr, std::chrono::system_clock::now());
         return job; 
     }
@@ -112,7 +149,7 @@ public:
     {
         std::vector<T> jobs; 
         mysqlx::Table table = db.getTable("jobs");
-        mysqlx::RowResult rows = table.select("id", "expr", "paused").execute(); 
+        mysqlx::RowResult rows = table.select("id", "expr", "status", "result").execute(); 
         
         for (auto row : rows)
         {
@@ -120,7 +157,8 @@ public:
             job.id = row[0]; 
             job.expr_str = row[1].get<std::string>(); 
             job.expr = cron::make_cron(job.expr_str);
-            job.paused = row[2].get<bool>();
+            job.status = this->from_string_status(row[2].get<std::string>());
+            job.result = this->from_string_result(row[3].get<std::string>());
             job.next = cron::cron_next(job.expr, std::chrono::system_clock::now());
             jobs.push_back(job);
         }
@@ -135,8 +173,8 @@ public:
 
         for (const auto& job : jobs)
         {
-            table.insert("id", "expr", "paused")
-                .values(job.id, job.expr_str, job.paused)
+            table.insert("id", "expr", "status", "result")
+                .values(job.id, job.expr_str, this->to_string(job.status), this->to_string(job.result))
                 .execute();
         }
     }

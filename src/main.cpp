@@ -18,6 +18,7 @@ void example3();
 void example4(); 
 void example5(); 
 void example6(); 
+void example7(); 
 
 int main(int argc, char* argv[])
 {
@@ -28,7 +29,8 @@ int main(int argc, char* argv[])
     examples.emplace_back(example3);  
     examples.emplace_back(example4);  
     examples.emplace_back(example5);  
-    examples.emplace_back(example6);  
+    examples.emplace_back(example6); 
+    examples.emplace_back(example7); 
 
     for (auto& example : examples)
     {
@@ -162,7 +164,10 @@ void example4()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback, start_callback);
+        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->set_start_callback(job_id, start_callback);
+        scheduler->set_success_callback(job_id, success_callback);
+        scheduler->set_error_callback(job_id, error_callback);
     }
 
     scheduler->start();
@@ -196,7 +201,9 @@ void example5()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback);
+        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->set_success_callback(job_id, success_callback);
+        scheduler->set_error_callback(job_id, error_callback);
     }
 
     scheduler->save_state(); 
@@ -253,7 +260,9 @@ void example6()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second, error_callback, success_callback);
+        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->set_success_callback(job_id, success_callback);
+        scheduler->set_error_callback(job_id, error_callback);
     }
 
     scheduler->save_state();
@@ -279,6 +288,49 @@ void example6()
 
     scheduler->load_state(); 
     scheduler->start(); 
+
+    while(true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5)); 
+    }
+}
+
+/*
+ * test task status and result 
+ */
+void example7()
+{
+    std::vector<std::pair<std::string, std::function<void()>>> jobs{
+        {"*/3 * * * * *", []() {printer("[任务1] 每3秒执行一次"); }}, // success
+        {"*/5 * * * * *", []() {printer("[任务2] 每5秒执行一次"); throw std::runtime_error("[任务2] 执行失败"); }}, // failed
+        {"*/7 * * * * *", []() {printer("[任务3] 每7秒执行一次"); }}, // paused
+    }; 
+
+    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    // scheduler->set_persistence(std::make_shared<FilePersistenceJson<Job>>("./jobs.json"));
+    scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
+
+    // TODO: 任务结束钩子，持久化快照, 暂时全量更新
+    auto end_callback = [scheduler](int job_id) {
+        scheduler->save_state();
+        printer("任务[", job_id, "] 保存成功"); 
+    };
+
+    for (size_t i = 0; i != jobs.size(); i ++)
+    {
+        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->set_end_callback(job_id, end_callback);
+    }
+
+    // 开始执行
+    scheduler->start(); 
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    // 第三个任务暂停，暂停后手动保存
+    scheduler->pause_job(3);
+    // 保存结果到文件中
+    scheduler->save_state();
 
     while(true)
     {
