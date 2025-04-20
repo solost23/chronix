@@ -251,7 +251,7 @@ public:
                                 {
                                     std::lock_guard<std::mutex> lock(mutex);
                                     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-                                    job.metrics.update(true, duration);
+                                    job.metrics.update(false, duration);
                                 }
 
                                 if (job.error_callback)
