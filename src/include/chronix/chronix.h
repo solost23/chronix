@@ -28,12 +28,12 @@ public:
     }
 
     // cron job
-    int add_cron_job(const std::string& cron_expr, Task task)
+    size_t add_cron_job(const std::string& cron_expr, Task task)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
         cron::cronexpr expr = cron::make_cron(cron_expr);
-        int job_id = next_job_id ++;
+        size_t job_id = next_job_id ++;
         auto next_time = cron::cron_next(expr, std::chrono::system_clock::now()); 
 
         job_queue.push({job_id, next_time});
@@ -56,11 +56,11 @@ public:
     }
 
     // one time job
-    int add_one_time_job(const std::chrono::system_clock::time_point& run_at, Task task)
+    size_t add_one_time_job(const std::chrono::system_clock::time_point& run_at, Task task)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        int job_id = next_job_id ++;
+        size_t job_id = next_job_id ++;
 
         job_queue.push({job_id, run_at});
         job_map[job_id] = Job{
@@ -81,7 +81,7 @@ public:
         return job_id;
     }
 
-    void set_start_callback(int job_id, StartCallback callback)
+    void set_start_callback(size_t job_id, StartCallback callback)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -92,7 +92,7 @@ public:
         job_map[job_id].start_callback = callback;
     }
 
-    void set_success_callback(int job_id, SuccessCallback callback)
+    void set_success_callback(size_t job_id, SuccessCallback callback)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -103,7 +103,7 @@ public:
         job_map[job_id].success_callback = callback;
     }
 
-    void set_error_callback(int job_id, ErrorCallback callback)
+    void set_error_callback(size_t job_id, ErrorCallback callback)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -114,7 +114,7 @@ public:
         job_map[job_id].error_callback = callback;
     }
 
-    void set_end_callback(int job_id, EndCallback callback)
+    void set_end_callback(size_t job_id, EndCallback callback)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -126,7 +126,7 @@ public:
     }
 
     // remove job
-    void remove_job(int job_id)
+    void remove_job(size_t job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -138,7 +138,7 @@ public:
     }
 
     // pause job
-    void pause_job(int job_id)
+    void pause_job(size_t job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -150,7 +150,7 @@ public:
     }
 
     // resume job
-    void resume_job(int job_id)
+    void resume_job(size_t job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -203,6 +203,8 @@ public:
                     if (job.status == JobStatus::Pending)
                     {
                         auto wrapped_task = [this, &job]() {
+                            auto start_time = std::chrono::system_clock::now();
+
                             try 
                             {
                                 {
@@ -215,12 +217,20 @@ public:
                                     job.start_callback(job.id);
                                 }
 
+                                start_time = std::chrono::system_clock::now();
                                 job.task(); 
+                                auto end_time = std::chrono::system_clock::now();
 
                                 {
                                     std::lock_guard<std::mutex> lock(mutex);
                                     job.status = JobStatus::Pending;
                                     job.result = JobResult::Success;  
+                                }
+
+                                {
+                                    std::lock_guard<std::mutex> lock(mutex);
+                                    std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+                                    job.metrics.update(true, duration);
                                 }
 
                                 if (job.success_callback)
@@ -230,10 +240,18 @@ public:
                             }
                             catch (const std::exception& e)
                             {
+                                auto end_time = std::chrono::system_clock::now();
+
                                 {
                                     std::lock_guard<std::mutex> lock(mutex); 
                                     job.status = JobStatus::Pending;
                                     job.result = JobResult::Failed;  
+                                }
+
+                                {
+                                    std::lock_guard<std::mutex> lock(mutex);
+                                    std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+                                    job.metrics.update(true, duration);
                                 }
 
                                 if (job.error_callback)
@@ -327,7 +345,7 @@ public:
         }
     }
 
-    void register_job_initializer(int job_id, JobInitializer initializer)
+    void register_job_initializer(size_t job_id, JobInitializer initializer)
     {
         if (initializer)
         {
@@ -337,7 +355,7 @@ public:
     }
 
     // get job status
-    JobStatus get_job_status(int job_id)
+    JobStatus get_job_status(size_t job_id)
     {
         std::lock_guard<std::mutex> lock(mutex); 
 
@@ -360,7 +378,7 @@ public:
     }
 
     // get job last result
-    JobResult get_job_result(int job_id)
+    JobResult get_job_result(size_t job_id)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -382,17 +400,61 @@ public:
         }
     }
 
+    // get job metrics
+    JobMetrics get_job_metrics(size_t job_id)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (!job_map.count(job_id))
+        {
+            throw std::runtime_error("Job ID not found");
+        }
+
+        return job_map[job_id].metrics;
+    }
+
+    // get job count
+    size_t get_job_count()
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        return job_map.size();
+    }
+
+    // get running job count
+    size_t get_running_job_count()
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        size_t count{0};
+        for (const auto& [id, job] : job_map)
+        {
+            if (job.status == JobStatus::Running)
+            {
+                count ++;
+            }
+        }
+
+        return count; 
+    }
+
+    // get running
+    size_t get_running() const 
+    {
+        return running; 
+    }
+
 private:
     std::priority_queue<JobNode, std::vector<JobNode>, std::greater<JobNode>> job_queue; 
-    std::unordered_map<int, Job> job_map;
+    std::unordered_map<size_t, Job> job_map;
     std::thread worker;
     std::atomic<bool> running;
-    std::atomic<int> next_job_id;
+    std::atomic<size_t> next_job_id;
     std::mutex mutex;
 
     ThreadPool thread_pool; 
 
     std::shared_ptr<Persistence<Job>> persistence; 
 
-    std::unordered_map<int, JobInitializer> job_initializers_;
+    std::unordered_map<size_t, JobInitializer> job_initializers_;
 }; 

@@ -120,7 +120,7 @@ private:
     T deserialize(const nlohmann::json& j)
     {
         T job; 
-        job.id = j.at("id").get<int>(); 
+        job.id = j.at("id").get<size_t>(); 
         job.expr_str = j.at("expr").get<std::string>();
         job.expr = cron::make_cron(job.expr_str);
         job.status = this->from_string_status(j.value("status", "Pending"));
@@ -154,7 +154,7 @@ public:
         for (auto row : rows)
         {
             T job; 
-            job.id = row[0]; 
+            job.id = static_cast<size_t>(row[0].get<uint64_t>());
             job.expr_str = row[1].get<std::string>(); 
             job.expr = cron::make_cron(job.expr_str);
             job.status = this->from_string_status(row[2].get<std::string>());

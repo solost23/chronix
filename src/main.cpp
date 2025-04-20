@@ -20,6 +20,7 @@ void example5();
 void example6(); 
 void example7(); 
 void example8();
+void example9();
 
 int main(int argc, char* argv[])
 {
@@ -33,6 +34,7 @@ int main(int argc, char* argv[])
     examples.emplace_back(example6); 
     examples.emplace_back(example7); 
     examples.emplace_back(example8);
+    examples.emplace_back(example9);
 
     for (auto& example : examples)
     {
@@ -153,20 +155,20 @@ void example4()
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
 
-    auto start_callback = [](int job_id) {
+    auto start_callback = [](size_t job_id) {
         printer("任务ID: ", job_id, " 开始执行");
     }; 
 
-    auto error_callback = [](int job_id, const std::exception& e) {
+    auto error_callback = [](size_t job_id, const std::exception& e) {
         printer("任务ID: ", job_id, " 执行失败，错误: ", e.what());
     }; 
-    auto success_callback = [](int job_id) {
+    auto success_callback = [](size_t job_id) {
         printer("任务ID: ", job_id, " 执行成功");
     };
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
+        size_t job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_start_callback(job_id, start_callback);
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
@@ -194,16 +196,16 @@ void example5()
     auto scheduler = std::make_shared<ChronixScheduler>(4);
     scheduler->set_persistence(std::make_shared<FilePersistenceJson<Job>>("./jobs.json"));
 
-    auto error_callback = [](int job_id, const std::exception& e) { 
+    auto error_callback = [](size_t job_id, const std::exception& e) { 
         printer("任务ID: ", job_id, " 执行失败，错误: ", e.what());
     }; 
-    auto success_callback = [](int job_id) {
+    auto success_callback = [](size_t job_id) {
         printer("任务ID: ", job_id, " 执行成功");
     };
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
+        size_t job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
     }
@@ -253,16 +255,16 @@ void example6()
     auto scheduler = std::make_shared<ChronixScheduler>(4);
     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
 
-    auto error_callback = [](int job_id, const std::exception& e) {
+    auto error_callback = [](size_t job_id, const std::exception& e) {
         printer("任务ID: ", job_id, " 执行失败，错误: ", e.what());
     }; 
-    auto success_callback = [](int job_id) {
+    auto success_callback = [](size_t job_id) {
         printer("任务ID: ", job_id, " 执行成功");
     };
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
+        size_t job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
     }
@@ -313,14 +315,14 @@ void example7()
     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
 
     // TODO: 任务结束钩子，持久化快照, 暂时全量更新
-    auto end_callback = [scheduler](int job_id) {
+    auto end_callback = [scheduler](size_t job_id) {
         scheduler->save_state();
         printer("任务[", job_id, "] 保存成功"); 
     };
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
+        size_t job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_end_callback(job_id, end_callback);
     }
 
@@ -361,6 +363,57 @@ void example8()
 
     while (true)
     {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+}
+
+void example9()
+{
+    std::vector<std::pair<std::string, std::function<void()>>> jobs{
+        {"*/3 * * * * *", []() {std::this_thread::sleep_for(std::chrono::seconds(1)); printer("[任务1] 每3秒执行一次"); }}, // success
+        {"*/5 * * * * *", []() {std::this_thread::sleep_for(std::chrono::seconds(3)); printer("[任务2] 每5秒执行一次"); throw std::runtime_error("[任务2] 执行失败"); }}, // failed
+        {"*/7 * * * * *", []() {std::this_thread::sleep_for(std::chrono::seconds(5)); printer("[任务3] 每7秒执行一次"); }}, // paused
+    }; 
+
+    auto scheduler = std::make_shared<ChronixScheduler>(4);
+
+    for (size_t i = 0; i != jobs.size(); i ++)
+    {
+        scheduler->add_cron_job(jobs[i].first, jobs[i].second);
+    }
+
+    scheduler->start();
+
+    auto format_time = [](std::chrono::system_clock::time_point tp) {
+        std::time_t tt = std::chrono::system_clock::to_time_t(tp);
+        std::ostringstream oss;
+        oss << std::put_time(std::localtime(&tt), "%F %T");
+        return oss.str();
+    };
+
+    while (true)
+    {
+        printer("调度器运行状态: ", scheduler->get_running());
+        printer("当前的任务总数: ", scheduler->get_job_count());
+        printer("当前跑任务总数: ", scheduler->get_running_job_count());
+
+        for (size_t i = 1; i != 4; i ++)
+        {
+            printer("-----------------------");
+            auto metrics = scheduler->get_job_metrics(i);
+            printer("指标信息-执行次数: ", metrics.execution_count);
+            printer("指标信息-成功次叔: ", metrics.success_count);
+            printer("指标信息-失败次数: ", metrics.error_count);
+            printer("指标信息-最后执行时间: ", format_time(metrics.last_run_time));
+            printer("指标信息-最后执行时长: ", metrics.last_duration.count(), "ms");
+            printer("指标信息-执行总时长: ", metrics.total_duration.count(), "ms");
+            printer("指标信息-最大执行时间: ", metrics.max_duration.count(), "ms");
+            printer("指标信息-最小执行时间: ", metrics.min_duration.count(), "ms");
+            printer("指标信息-执行平均耗时: ", metrics.average_duration().count(), "ms");
+            printer("指标信息-执行成功率: ", metrics.success_rate());
+            printer("指标信息-执行失败率: ", metrics.error_rate());
+        }
+        
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
