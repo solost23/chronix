@@ -19,6 +19,7 @@ void example4();
 void example5(); 
 void example6(); 
 void example7(); 
+void example8();
 
 int main(int argc, char* argv[])
 {
@@ -31,6 +32,7 @@ int main(int argc, char* argv[])
     examples.emplace_back(example5);  
     examples.emplace_back(example6); 
     examples.emplace_back(example7); 
+    examples.emplace_back(example8);
 
     for (auto& example : examples)
     {
@@ -72,7 +74,7 @@ void example1()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->add_cron_job(jobs[i].first, jobs[i].second);
     }
 
     scheduler->start(); 
@@ -100,7 +102,7 @@ void example2()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->add_cron_job(jobs[i].first, jobs[i].second);
     }
 
     scheduler->start();  
@@ -128,7 +130,7 @@ void example3()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_job(jobs[i].first, jobs[i].second);
+        scheduler->add_cron_job(jobs[i].first, jobs[i].second);
     }
 
     scheduler->start();  
@@ -164,7 +166,7 @@ void example4()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_start_callback(job_id, start_callback);
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
@@ -201,7 +203,7 @@ void example5()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
     }
@@ -260,7 +262,7 @@ void example6()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
     }
@@ -318,7 +320,7 @@ void example7()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        int job_id = scheduler->add_job(jobs[i].first, jobs[i].second);
+        int job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_end_callback(job_id, end_callback);
     }
 
@@ -335,5 +337,30 @@ void example7()
     while(true)
     {
         std::this_thread::sleep_for(std::chrono::seconds(5)); 
+    }
+}
+
+void example8()
+{
+    std::vector<std::pair<std::chrono::system_clock::time_point, std::function<void()>>> jobs{
+        {std::chrono::system_clock::now() + std::chrono::seconds(1), []() { printer("[任务1]延时1秒执行"); }}, 
+        {std::chrono::system_clock::now() + std::chrono::seconds(3), []() { printer("[任务2]延时3秒执行"); }}, 
+        {std::chrono::system_clock::now() + std::chrono::seconds(5), []() { printer("[任务3]延时5秒执行"); }}, 
+        {std::chrono::system_clock::now() + std::chrono::seconds(7), []() { printer("[任务4]延时7秒执行"); }}, 
+        {std::chrono::system_clock::now() + std::chrono::seconds(9), []() { printer("[任务5]延时9秒执行"); }}, 
+    }; 
+
+    auto scheduler = std::make_shared<ChronixScheduler>(4);
+
+    for (size_t i = 0; i != jobs.size(); i ++)
+    {
+        scheduler->add_one_time_job(jobs[i].first, jobs[i].second);
+    }
+
+    scheduler->start();
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }

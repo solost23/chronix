@@ -37,8 +37,10 @@ struct Job
     StartCallback start_callback;
     EndCallback end_callback;
 
-    JobStatus status = JobStatus::Pending;
-    JobResult result = JobResult::Unknown; 
+    JobStatus status;
+    JobResult result;
+
+    bool one_time;
 };
 
 struct JobNode 

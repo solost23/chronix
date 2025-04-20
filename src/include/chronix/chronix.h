@@ -27,8 +27,8 @@ public:
         stop();
     }
 
-    // task add
-    int add_job(const std::string& cron_expr, Task task)
+    // cron job
+    int add_cron_job(const std::string& cron_expr, Task task)
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -47,10 +47,38 @@ public:
             nullptr, 
             nullptr, 
             nullptr, 
-            JobStatus::Pending, 
+            JobStatus::Pending,
+            JobResult::Unknown, 
+            false,  
         };
 
         return job_id; 
+    }
+
+    // one time job
+    int add_one_time_job(const std::chrono::system_clock::time_point& run_at, Task task)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        int job_id = next_job_id ++;
+
+        job_queue.push({job_id, run_at});
+        job_map[job_id] = Job{
+            job_id, 
+            {}, 
+            "",
+            task, 
+            run_at, 
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr, 
+            JobStatus::Pending, 
+            JobResult::Unknown, 
+            true, 
+        }; 
+
+        return job_id;
     }
 
     void set_start_callback(int job_id, StartCallback callback)
@@ -218,12 +246,20 @@ public:
                             {
                                 job.end_callback(job.id); 
                             }
+
+                            if (job.one_time)
+                            {
+                                std::lock_guard<std::mutex> lock(mutex);
+                                job_map.erase(job.id);
+                            }
                         }; 
                         thread_pool.submit(wrapped_task);
                     }
-                    
-                    job.next = cron::cron_next(job.expr, now);
-                    job_queue.push({job.id, job.next});
+                    if (!job.one_time)
+                    {
+                        job.next = cron::cron_next(job.expr, now);
+                        job_queue.push({job.id, job.next});
+                    }
 
                     lock.unlock();
                 }

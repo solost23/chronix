@@ -17,7 +17,7 @@ Chronix is a lightweight, high-performance C++ task scheduler that supports Cron
 - 🧩 **Task Hook Mechanism**: Supports start, success, end, and failure callbacks
 - 🔄 **Task Persistence**: Task state can be saved and restored
 - ⏯️ **Task Control**: Supports adding, pausing, resuming, and removing tasks
-
+- ⏳ Delayed One-Time Jobs: Supports delayed execution of one-time jobs with second-level precision
 ---
 
 ## 🚀 Usage
@@ -29,20 +29,27 @@ Chronix is a lightweight, high-performance C++ task scheduler that supports Cron
 auto scheduler = std::make_shared<ChronixScheduler>(4);
 ```
 
-### 2. Add a Scheduled Task
+### 2. Add a Scheduled Job
 
 ```cpp
 // Execute every 10 seconds
-int job_id = scheduler.add_job("*/10 * * * * *", []() { std::cout << "Job executing" << std::endl; });
+int job_id = scheduler.add_cron_job("*/10 * * * * *", []() { std::cout << "Job executing" << std::endl; });
 
-scheduler->set_start_callback([](int id) { std::cout << "Job " << id << " started" << std::endl; });
-scheduler->set_success_callback([](int id) { std::cout << "Job " << id << " completed successfully" << std::endl; });
-scheduler->set_error_callback([](int id, std::exception& e) { std::cerr << "Job " << id << " failed: " << e.what() << std::endl; });
+scheduler->set_start_callback(job_id, [](int id) { std::cout << "Job " << id << " started" << std::endl; });
+scheduler->set_success_callback(job_id, [](int id) { std::cout << "Job " << id << " completed successfully" << std::endl; });
+scheduler->set_error_callback(job_id, [](int id, std::exception& e) { std::cerr << "Job " << id << " failed: " << e.what() << std::endl; });
 // You can choose to persist the job state here
-scheduler->set_end_callback([](int id) { std::cout << "Job " << id << " finished" << std::endl; });
+scheduler->set_end_callback(job_id, [](int id) { std::cout << "Job " << id << " finished" << std::endl; });
 ```
 
-### 3. Control Task State
+### 3. Add A Delayed Job
+
+```cpp
+// Execute once after a delay of three seconds
+scheduler->add_one_time_job(std::chrono::system_clock::now() + std::chrono::seconds(3), []() { printer("[任务2]延时3秒执行"); });
+```
+
+### 4. Control Job State
 
 ```cpp
 scheduler.pause_job(job_id);
@@ -50,7 +57,7 @@ scheduler.resume_job(job_id);
 scheduler.remove_job(job_id);
 ```
 
-### 4. Task Persistence
+### 5. Job Persistence
 
 ```cpp
 scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "******", "chronix"));
@@ -63,7 +70,7 @@ scheduler.register_job_initializer(job_id, [](Job& job) {
 });
 ```
 
-### 5. Start the Scheduler
+### 6. Start the Scheduler
 
 ```cpp
 scheduler.start();
