@@ -17,7 +17,7 @@ Chronix is a lightweight, high-performance C++ task scheduler that supports Cron
 - 🧩 **Task Hook Mechanism**: Supports start, success, end, and failure callbacks
 - 🔄 **Task Persistence**: Task state can be saved and restored
 - ⏯️ **Task Control**: Supports adding, pausing, resuming, and removing tasks
-- ⏳ Delayed One-Time Jobs: Supports delayed execution of one-time jobs with second-level precision
+- ⏳ **Delayed One-Time Jobs**: Supports delayed execution of one-time jobs with second-level precision
 ---
 
 ## 🚀 Usage
