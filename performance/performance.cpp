@@ -84,7 +84,6 @@ int main(int argc, char* argv[])
 
             if (metrics.execution_count == 0)
             {
-                std::cout << "[Round " << r + 1 << "] 周期任务 " << job_id << " 未执行" << std::endl;
                 continue; 
             }
 
