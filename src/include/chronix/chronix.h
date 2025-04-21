@@ -317,37 +317,96 @@ public:
 
     void save_state()
     {
-        if (persistence)
+        if (!persistence)
         {
-            std::lock_guard<std::mutex> lock(mutex); 
-            std::vector<Job> snapshot; 
-            for (auto& [id, job] : job_map)
-            {
-                snapshot.push_back(job);
-            }
-            persistence->save(snapshot); 
+            throw std::runtime_error("No set persistence");
         }
+
+        std::vector<Job> snapshot;
+
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            snapshot.reserve(job_map.size());
+            for (const auto& [id, job] : job_map)
+            {
+                snapshot.emplace_back(job);
+            }
+        }
+
+        std::thread([p = persistence, snapshot = std::move(snapshot)]() {
+            try 
+            {
+                p->save(snapshot);
+            }
+            catch (const mysqlx::abi2::r0::Error& e)
+            {
+                std::cerr << "Persistence save err: " << e.what() << std::endl; 
+            }
+        }).detach();
     }
 
     void load_state()
     {
-        if (persistence)
+        if (!persistence)
         {
-            auto jobs = persistence->load(); 
+            throw std::runtime_error("No set persistence");
+        }
 
-            std::lock_guard<std::mutex> lock(mutex);
-            for (auto& job : jobs)
+        auto jobs = persistence->load();
+
+        std::vector<std::future<std::optional<std::pair<size_t, Job>>>> futures;
+
+        // 异步初始化每个任务
+        for (size_t i = 0; i != jobs.size(); i++)
+        {
+            futures.emplace_back(std::async(std::launch::async, [&, i]() -> std::optional<std::pair<size_t, Job>> {
+                Job job = jobs[i];
+                auto it = job_initializers_.find(job.id);
+                if (it != job_initializers_.end())
+                {
+                    try {
+                        it->second(job); // 使用初始化器初始化任务
+                        return std::make_pair(job.id, job); // 返回任务 ID 和任务本身
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << "[Error] 初始化任务 " << job.id << " 时出错: " << e.what() << "\n";
+                    }
+                }
+                else
+                {
+                    std::cerr << "[Warning] 找不到任务 " << job.id << " 的初始化器\n";
+                }
+                return std::nullopt; // 如果初始化失败，返回空
+            }));
+        }
+
+        std::unordered_map<size_t, Job> local_map;
+        std::queue<std::pair<size_t, std::chrono::system_clock::time_point>> local_queue;
+
+        // 等待并收集异步任务的结果
+        for (auto& f : futures)
+        {
+            if (auto resp = f.get(); resp.has_value())
             {
-                if (job_initializers_.find(job.id) != job_initializers_.end())
-                {
-                    job_initializers_[job.id](job); 
-                }
-                else 
-                {
-                    std::cerr << "[Warning] No initializer found for job " << job.id << "\n";
-                }
-                job_map[job.id] = job; 
-                job_queue.push({job.id, job.next});
+                const auto& [id, job] = resp.value();
+                local_map[id] = job;
+                local_queue.push({id, job.next});  // 假设 job.next_time 是时间戳（time_point）
+            }
+        }
+
+        // 锁住共享资源，将数据合并到主线程的资源中
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            for (auto& [id, job] : local_map)
+            {
+                job_map[id] = std::move(job);  // 将任务存入 job_map
+            }
+            while (!local_queue.empty())
+            {
+                const auto& front = local_queue.front();
+                job_queue.push({front.first, front.second});  // 将任务放入队列中
+                local_queue.pop();
             }
         }
     }
