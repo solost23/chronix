@@ -77,7 +77,7 @@ scheduler.register_job_initializer(job_id, [](Job& job) {
 ```cpp
 scheduler.start();
 ```
-更详细的使用案例可查看 src/main.cpp 文件。
+更详细的使用案例可查看 example/example.cpp 文件。
 
 ---
 
