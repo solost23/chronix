@@ -250,6 +250,7 @@ void example6()
         {"*/5 * * * * *", [](){ printer("[任务1] 每5秒执行一次"); }}, 
         {"*/10 * * * * *", [](){ printer("[任务2] 每10秒执行一次"); }}, 
         {"*/20 * * * * *", [](){ printer("[任务3] 每20秒执行一次"); }},
+        {"*/30 * * * * *", [](){ printer("[任务4] 每30秒执行一次"); }}, 
     };
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);

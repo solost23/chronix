@@ -75,21 +75,34 @@ public:
 
     std::vector<T> load() override
     {
-        std::ifstream ifs(filepath); 
-        if (!ifs.is_open())
+        std::string content;
+
         {
-            return {}; 
+            std::lock_guard<std::mutex> lock(mutex); 
+            std::ifstream ifs(filepath);
+            if (!ifs.is_open())
+            {
+                return {};
+            }
+
+            std::ostringstream oss;
+            oss << ifs.rdbuf(); 
+            content = oss.str();
         }
 
-        nlohmann::json j;
-        ifs >> j;
+        nlohmann::json j = nlohmann::json::parse(content, nullptr, false);
+        if (j.is_discarded()) {
+            std::cerr << "[Error] JSON parse failed when loading: " << filepath << std::endl;
+            return {};
+        }
 
         std::vector<T> jobs;
         for (const auto& item : j)
         {
-            jobs.push_back(deserialize(item)); 
+            jobs.push_back(deserialize(item));
         }
-        return jobs; 
+
+        return jobs;
     }
 
     void save(const std::vector<T>& jobs) override
@@ -97,15 +110,19 @@ public:
         nlohmann::json j;
         for (const auto& job : jobs)
         {
-            j.push_back(serialize(job)); 
+            j.push_back(serialize(job));
         }
 
-        std::ofstream ofs(filepath); 
-        ofs << j.dump(4); 
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            std::ofstream ofs(filepath);
+            ofs << j.dump(4);
+        }
     }
 
 private:
     std::string filepath; 
+    std::mutex mutex;
 
     nlohmann::json serialize(const T& job)
     {
@@ -168,14 +185,43 @@ public:
 
     void save(const std::vector<T>& jobs) override
     {
-        mysqlx::Table table = db.getTable("jobs"); 
-        table.remove().execute(); 
-
-        for (const auto& job : jobs)
+        try 
         {
-            table.insert("id", "expr", "status", "result")
-                .values(job.id, job.expr_str, this->to_string(job.status), this->to_string(job.result))
-                .execute();
+            mysqlx::Table table = db.getTable("jobs"); 
+
+            session.startTransaction();
+
+            for (const auto& job : jobs)
+            {
+
+                auto select = table.select("id").where("id = :id");
+                select.bind("id", job.id);
+                auto resp = select.execute();
+
+                if (resp.count() > 0)
+                {
+                    auto update = table.update()
+                                       .set("expr", job.expr_str)
+                                       .set("status", this->to_string(job.status))
+                                       .set("result", this->to_string(job.result))
+                                       .where("id = :id");
+                    update.bind("id", job.id);
+                    update.execute();
+                }
+                else 
+                {
+                    table.insert("id", "expr", "status", "result")
+                         .values(job.id, job.expr_str, this->to_string(job.status), this->to_string(job.result))
+                         .execute();
+                }
+            }
+
+            session.commit(); 
+        }
+        catch (const mysqlx::Error& e)
+        {
+            session.rollback();
+            std::cerr << "Error during save operation: " << e.what() << std::endl;
         }
     }
 
