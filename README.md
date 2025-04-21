@@ -79,7 +79,26 @@ scheduler.start();
 ```
 For more detailed usage, refer to the example/example.cpp file.
 
---- 
+---
+
+## 📊 Performance Test Report
+
+### 🧪 Performance Test Configuration
+
+| **Configuration Item**         | **Configuration Item**                            |
+| -------------- | ------------------------------- |
+| CPU Threads     | `std::thread::hardware_concurrency() * 4` |
+| Tasks per Round     | 5000                            |
+| Total Rounds         | 10                              |
+| Total Tasks       | 50,000                           |
+| Time per Round   | 30 seconds                          |
+| Scheduling Frequency       | Every 1 ~ 5 seconds (cron expression */N * * * * *) |
+| Task Body         | Random sleep time between 1 ~ 10 ms, 10% chance of failure           |
+
+### 📈 Performance Test Results
+[Performance Test CSV](./bin/performance.csv)
+
+---
 
 ## 📄 License
 

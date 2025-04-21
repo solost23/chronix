@@ -20,7 +20,7 @@ class ChronixScheduler
 {
 public:
     ChronixScheduler(size_t thread_count = std::thread::hardware_concurrency()) 
-        : running(false), next_job_id(1), thread_pool(thread_count) {}
+        : running(false), next_job_id(1), thread_pool(thread_count), metrics_enabled(false) {}
 
     ~ChronixScheduler()
     {
@@ -125,6 +125,11 @@ public:
         job_map[job_id].end_callback = callback;
     }
 
+    void set_metrics_enabled(bool enabled)
+    {
+        metrics_enabled = enabled; 
+    }
+
     // remove job
     void remove_job(size_t job_id)
     {
@@ -227,6 +232,7 @@ public:
                                     job.result = JobResult::Success;  
                                 }
 
+                                if (metrics_enabled)
                                 {
                                     std::lock_guard<std::mutex> lock(mutex);
                                     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
@@ -248,6 +254,7 @@ public:
                                     job.result = JobResult::Failed;  
                                 }
 
+                                if (metrics_enabled)
                                 {
                                     std::lock_guard<std::mutex> lock(mutex);
                                     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
@@ -457,4 +464,6 @@ private:
     std::shared_ptr<Persistence<Job>> persistence; 
 
     std::unordered_map<size_t, JobInitializer> job_initializers_;
+
+    bool metrics_enabled;
 }; 
