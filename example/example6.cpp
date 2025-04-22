@@ -53,6 +53,12 @@
          job.success_callback = success_callback; 
          job.error_callback = error_callback;
      }); 
+     
+     scheduler->register_job_initializer(4, [error_callback, success_callback](Job& job) {
+         job.task = []() { printer("[任务4] 每30秒执行一次"); };
+         job.success_callback = success_callback; 
+         job.error_callback = error_callback;
+     });
  
      scheduler->load_state(); 
      scheduler->start(); 
