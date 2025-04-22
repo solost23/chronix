@@ -117,6 +117,10 @@ struct JobNode
     size_t id;
     std::chrono::system_clock::time_point next;
 
+    JobNode(size_t id, std::chrono::system_clock::time_point next)
+        : id(id), next(next)
+    {}
+
     bool operator>(const JobNode& other) const 
     {
         return next > other.next;

@@ -99,7 +99,7 @@ public:
         std::vector<T> jobs;
         for (const auto& item : j)
         {
-            jobs.push_back(deserialize(item));
+            jobs.emplace_back(deserialize(item));
         }
 
         return jobs;
@@ -110,7 +110,7 @@ public:
         nlohmann::json j;
         for (const auto& job : jobs)
         {
-            j.push_back(serialize(job));
+            j.emplace_back(serialize(job));
         }
 
         {
@@ -177,7 +177,7 @@ public:
             job.status = this->from_string_status(row[2].get<std::string>());
             job.result = this->from_string_result(row[3].get<std::string>());
             job.next = cron::cron_next(job.expr, std::chrono::system_clock::now());
-            jobs.push_back(job);
+            jobs.emplace_back(job);
         }
 
         return jobs; 
