@@ -139,7 +139,8 @@ public:
         {
             throw std::runtime_error("Job ID not found");
         }
-        job_map.erase(job_id); 
+        // 延时删除任务
+        job_map[job_id].deleted = true; 
     }
 
     // pause job
@@ -189,11 +190,19 @@ public:
                     continue; 
                 }
 
-                JobNode next_node = job_queue.top();
+                auto next_node = job_queue.top();
 
-                if (!job_map.count(next_node.id))
+                // 延时删除任务
+                auto it = job_map.find(next_node.id);
+                bool to_delete = (it == job_map.end() || it->second.deleted);
+                if (to_delete)
                 {
                     job_queue.pop();
+
+                    if (it != job_map.end())
+                    {
+                        job_map.erase(it);
+                    }
 
                     lock.unlock();
                     continue; 

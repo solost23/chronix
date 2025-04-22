@@ -108,6 +108,8 @@ struct Job
     bool one_time;
 
     JobMetrics metrics;
+
+    bool deleted{false}; 
 };
 
 struct JobNode 

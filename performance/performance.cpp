@@ -11,7 +11,8 @@
 static const int THREAD_COUNT = std::thread::hardware_concurrency() * 4;; 
 
 static const size_t ROUNDS = 10;
-static const size_t JOBS = 5000; 
+// static const size_t JOBS = 5000; 
+static const size_t JOB_STEP = 5000;
 // 提交完任务等待时间，单位：秒
 static const size_t JOBS_PER_ROUND = 30;
 
@@ -43,7 +44,8 @@ int main(int argc, char* argv[])
     {
         std::vector<size_t> round_job_ids;
 
-        for (size_t i = 0; i != JOBS; i ++)
+        size_t jobs = (r + 1) * JOB_STEP;
+        for (size_t i = 0; i != jobs; i ++)
         {
             std::string cron_expr = "*/" + std::to_string((i % 5) + 1) + " * * * * *";
 
@@ -71,7 +73,7 @@ int main(int argc, char* argv[])
 
         all_job_ids.insert(all_job_ids.end(), round_job_ids.begin(), round_job_ids.end());
 
-        std::cout << "[Round " << r + 1 << "] 周期任务已提交，总数：" << scheduler->get_job_count() << std::endl;
+        std::cout << "[Round " << r + 1 << "] 周期任务已提交，总数：" << jobs << std::endl;
 
         auto r_start = std::chrono::steady_clock::now();
         std::this_thread::sleep_for(std::chrono::seconds(JOBS_PER_ROUND));
@@ -82,6 +84,7 @@ int main(int argc, char* argv[])
         {
             JobMetrics metrics = scheduler->get_job_metrics(job_id); 
 
+            // 未执行也写入
             if (metrics.execution_count == 0)
             {
                 continue; 
@@ -101,6 +104,11 @@ int main(int argc, char* argv[])
         }
 
         out.flush(); 
+
+        for (const auto& job_id : round_job_ids)
+        {
+            scheduler->remove_job(job_id);
+        }
     }
 
     std::cout << "✅ 所有轮次周期任务压测完成，指标写入成功" << std::endl; 
