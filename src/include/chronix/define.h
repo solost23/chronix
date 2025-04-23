@@ -105,7 +105,7 @@ struct Job
     JobStatus status;
     JobResult result;
 
-    bool one_time;
+    bool once;
 
     JobMetrics metrics;
 

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <functional>
 #include <unordered_map>
+#include <condition_variable>
 
 #include "chronix/define.h" 
 
@@ -63,11 +64,12 @@ public:
             });
         }
 
+        cv.notify_one(); 
         return job_id;  
     }
 
-    // one time job
-    size_t add_one_time_job(const std::chrono::system_clock::time_point& run_at, Task task)
+    // add once job
+    size_t add_once_job(const std::chrono::system_clock::time_point& run_at, Task task)
     {
         size_t job_id = next_job_id ++;
 
@@ -90,6 +92,7 @@ public:
             }); 
         }
 
+        cv.notify_one(); 
         return job_id; 
     }
 
@@ -189,147 +192,199 @@ public:
     // scheduler start
     void start()
     {
-        if (running) 
+        if (running)
         {
             return ;
         }
 
         running = true;
 
-        worker = std::thread([this](){
+        worker = std::thread([this]() {
             while (running)
             {
-                std::unique_lock<std::mutex> lock(mutex); 
+                std::vector<JobNode> ready_nodes;
 
-                if (job_queue.empty())
                 {
-                    lock.unlock();
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    continue; 
-                }
-
-                auto next_node = job_queue.top();
-
-                // 延时删除任务
-                auto it = job_map.find(next_node.id);
-                bool to_delete = (it == job_map.end() || it->second.deleted);
-                if (to_delete)
-                {
-                    job_queue.pop();
-
-                    if (it != job_map.end())
-                    {
-                        job_map.erase(it);
-                    }
-
-                    lock.unlock();
-                    continue; 
-                }
-
-                auto now = std::chrono::system_clock::now();
-                if (now >= next_node.next)
-                { 
-                    job_queue.pop();
-                    auto& job = job_map[next_node.id]; 
-
-                    if (job.status == JobStatus::Pending)
-                    {
-                        auto wrapped_task = [this, &job]() {
-                            auto start_time = std::chrono::system_clock::now();
-
-                            try 
-                            {
-                                {
-                                    std::lock_guard<std::mutex> lock(mutex); 
-                                    job.status = JobStatus::Running; 
-                                }
-
-                                if (job.start_callback)
-                                {
-                                    job.start_callback(job.id);
-                                }
-
-                                start_time = std::chrono::system_clock::now();
-                                job.task(); 
-                                auto end_time = std::chrono::system_clock::now();
-
-                                {
-                                    std::lock_guard<std::mutex> lock(mutex);
-                                    job.status = JobStatus::Pending;
-                                    job.result = JobResult::Success;  
-                                }
-
-                                if (metrics_enabled)
-                                {
-                                    std::lock_guard<std::mutex> lock(mutex);
-                                    std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-                                    job.metrics.update(true, duration);
-                                }
-
-                                if (job.success_callback)
-                                {
-                                    job.success_callback(job.id); 
-                                }
-                            }
-                            catch (const std::exception& e)
-                            {
-                                auto end_time = std::chrono::system_clock::now();
-
-                                {
-                                    std::lock_guard<std::mutex> lock(mutex); 
-                                    job.status = JobStatus::Pending;
-                                    job.result = JobResult::Failed;  
-                                }
-
-                                if (metrics_enabled)
-                                {
-                                    std::lock_guard<std::mutex> lock(mutex);
-                                    std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-                                    job.metrics.update(false, duration);
-                                }
-
-                                if (job.error_callback)
-                                {
-                                    job.error_callback(job.id, e); 
-                                }
-                            }
-
-                            if (job.end_callback)
-                            {
-                                job.end_callback(job.id); 
-                            }
-
-                            if (job.one_time)
-                            {
-                                std::lock_guard<std::mutex> lock(mutex);
-                                job_map.erase(job.id);
-                            }
-                        }; 
-                        thread_pool.submit(wrapped_task);
-                    }
-                    if (!job.one_time)
-                    {
-                        job.next = cron::cron_next(job.expr, now);
-                        job_queue.emplace(job.id, job.next);
-                    }
-
-                    lock.unlock();
-                }
-                else 
-                {
-                    lock.unlock();
+                    std::unique_lock<std::mutex> lock(mutex);
                     
-                    std::this_thread::sleep_until(next_node.next);
+                    if (job_queue.empty())
+                    {
+                        cv.wait_for(lock, std::chrono::milliseconds(100));
+                        continue; 
+                    }
+
+                    auto now = std::chrono::system_clock::now();
+                    while (!job_queue.empty() && now >= job_queue.top().next)
+                    {
+                        ready_nodes.emplace_back(job_queue.top());
+                        job_queue.pop(); 
+                    }
+
+                    if (ready_nodes.empty())
+                    {
+                        auto next_wake = job_queue.top().next;
+                        if (next_wake > now)
+                        {
+                            cv.wait_until(lock, next_wake);
+                        }
+                        continue; 
+                    }
+                }
+
+                for (auto& node : ready_nodes)
+                {
+                    process_job(node);
                 }
             }
         }); 
     }
 
+    // // scheduler start
+    // void start()
+    // {
+    //     if (running) 
+    //     {
+    //         return ;
+    //     }
+
+    //     running = true;
+
+    //     worker = std::thread([this](){
+    //         while (running)
+    //         {
+    //             std::unique_lock<std::mutex> lock(mutex); 
+
+    //             if (job_queue.empty())
+    //             {
+    //                 lock.unlock();
+
+    //                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //                 continue; 
+    //             }
+
+    //             auto next_node = job_queue.top();
+
+    //             // 延时删除任务
+    //             auto it = job_map.find(next_node.id);
+    //             bool to_delete = (it == job_map.end() || it->second.deleted);
+    //             if (to_delete)
+    //             {
+    //                 job_queue.pop();
+
+    //                 if (it != job_map.end())
+    //                 {
+    //                     job_map.erase(it);
+    //                 }
+
+    //                 lock.unlock();
+    //                 continue; 
+    //             }
+
+    //             auto now = std::chrono::system_clock::now();
+    //             if (now >= next_node.next)
+    //             { 
+    //                 job_queue.pop();
+    //                 auto& job = job_map[next_node.id]; 
+
+    //                 if (job.status == JobStatus::Pending)
+    //                 {
+    //                     auto wrapped_task = [this, &job]() {
+    //                         auto start_time = std::chrono::system_clock::now();
+
+    //                         try 
+    //                         {
+    //                             {
+    //                                 std::lock_guard<std::mutex> lock(mutex); 
+    //                                 job.status = JobStatus::Running; 
+    //                             }
+
+    //                             if (job.start_callback)
+    //                             {
+    //                                 job.start_callback(job.id);
+    //                             }
+
+    //                             start_time = std::chrono::system_clock::now();
+    //                             job.task(); 
+    //                             auto end_time = std::chrono::system_clock::now();
+
+    //                             {
+    //                                 std::lock_guard<std::mutex> lock(mutex);
+    //                                 job.status = JobStatus::Pending;
+    //                                 job.result = JobResult::Success;  
+    //                             }
+
+    //                             if (metrics_enabled)
+    //                             {
+    //                                 std::lock_guard<std::mutex> lock(mutex);
+    //                                 std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    //                                 job.metrics.update(true, duration);
+    //                             }
+
+    //                             if (job.success_callback)
+    //                             {
+    //                                 job.success_callback(job.id); 
+    //                             }
+    //                         }
+    //                         catch (const std::exception& e)
+    //                         {
+    //                             auto end_time = std::chrono::system_clock::now();
+
+    //                             {
+    //                                 std::lock_guard<std::mutex> lock(mutex); 
+    //                                 job.status = JobStatus::Pending;
+    //                                 job.result = JobResult::Failed;  
+    //                             }
+
+    //                             if (metrics_enabled)
+    //                             {
+    //                                 std::lock_guard<std::mutex> lock(mutex);
+    //                                 std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    //                                 job.metrics.update(false, duration);
+    //                             }
+
+    //                             if (job.error_callback)
+    //                             {
+    //                                 job.error_callback(job.id, e); 
+    //                             }
+    //                         }
+
+    //                         if (job.end_callback)
+    //                         {
+    //                             job.end_callback(job.id); 
+    //                         }
+
+    //                         if (job.one_time)
+    //                         {
+    //                             std::lock_guard<std::mutex> lock(mutex);
+    //                             job_map.erase(job.id);
+    //                         }
+    //                     }; 
+    //                     thread_pool.submit(wrapped_task);
+    //                 }
+    //                 if (!job.one_time)
+    //                 {
+    //                     job.next = cron::cron_next(job.expr, now);
+    //                     job_queue.emplace(job.id, job.next);
+    //                 }
+
+    //                 lock.unlock();
+    //             }
+    //             else 
+    //             {
+    //                 lock.unlock();
+                    
+    //                 std::this_thread::sleep_until(next_node.next);
+    //             }
+    //         }
+    //     }); 
+    // }
+
     // scheduler stop
     void stop() 
     {
         running = false;
+
+        cv.notify_all(); 
 
         if (worker.joinable())
         {
@@ -536,6 +591,141 @@ public:
     }
 
 private:
+    // process_job
+    void process_job(const JobNode& node)
+    {
+        Job* job_ptr; 
+
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+
+            auto it = job_map.find(node.id);
+            if (it == job_map.end())
+            {
+                return ;
+            }
+
+            auto& job = it->second; 
+            if (job.deleted)
+            {
+                job_map.erase(it); 
+                return ; 
+            }
+
+            if (job.status != JobStatus::Pending)
+            {
+                // 非Peding状态 & 周期性任务 下次继续调度
+                if (!job.once)
+                {
+                    auto calculated_next = job.next;
+                    int attempt{0};
+                    do 
+                    {
+                        calculated_next = cron::cron_next(job.expr, calculated_next);
+                        attempt ++;
+                    } while (calculated_next <= std::chrono::system_clock::now() && attempt < 10); 
+
+                    job.next = calculated_next;
+                    job_queue.emplace(job.id, calculated_next); 
+                    cv.notify_one(); 
+                }
+                return ; 
+            }
+
+            // 是Pending状态
+            job_ptr = &job;
+            job_ptr->status = JobStatus::Running; 
+            job.status = JobStatus::Running; 
+        }
+
+        // 准备任务包装器
+        auto wrapped_task = [this, job_ptr]() {
+            auto& job = *job_ptr; 
+            auto start_time = std::chrono::system_clock::now();
+
+            try {
+                if (job.start_callback)
+                {
+                    job.start_callback(job.id); 
+                }
+
+                job.task();
+
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+
+                    job.status = JobStatus::Pending; 
+                    job.result = JobResult::Success;
+
+                    if (metrics_enabled)
+                    {
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time);
+                        job.metrics.update(true, duration);
+                    }
+                }
+
+                if (job.success_callback)
+                {
+                    job.success_callback(job.id);
+                }
+            }
+            catch(const std::exception& e)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+
+                    job.status = JobStatus::Pending; 
+                    job.result = JobResult::Failed;
+
+                    if (metrics_enabled)
+                    {
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time);
+                        job.metrics.update(false, duration);
+                    }
+                }
+
+                if (job.error_callback)
+                {
+                    job.error_callback(job.id, e);
+                }
+            }
+
+            if (job.end_callback)
+            {
+                job.end_callback(job.id);
+            }
+
+            if (job.once)
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+
+                job_map.erase(job.id);
+            }
+            else 
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+
+                auto it = job_map.find(job.id);
+                if (it != job_map.end() && !it->second.deleted)
+                {
+                    auto calculated_next = job.next; 
+                    int attempt{0};
+                    do 
+                    {
+                        calculated_next = cron::cron_next(job.expr, calculated_next);
+                        attempt ++;
+                    } while (calculated_next <= std::chrono::system_clock::now() && attempt < 10);
+
+                    it->second.next = calculated_next; 
+                    job_queue.emplace(job.id, calculated_next);
+                    cv.notify_one(); 
+                }
+            }
+        }; 
+
+        thread_pool.submit(wrapped_task);
+    }
+
     std::priority_queue<JobNode, std::vector<JobNode>, std::greater<JobNode>> job_queue; 
     std::unordered_map<size_t, Job> job_map;
     std::thread worker;
@@ -550,4 +740,6 @@ private:
     std::unordered_map<size_t, JobInitializer> job_initializers_;
 
     std::atomic<bool> metrics_enabled;
+
+    std::condition_variable cv; 
 }; 

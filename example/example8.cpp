@@ -17,7 +17,7 @@ void example8()
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
-        scheduler->add_one_time_job(jobs[i].first, jobs[i].second);
+        scheduler->add_once_job(jobs[i].first, jobs[i].second);
     }
 
     scheduler->start();
