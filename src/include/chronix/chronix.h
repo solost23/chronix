@@ -705,8 +705,7 @@ private:
             {
                 std::lock_guard<std::mutex> lock(mutex);
 
-                auto it = job_map.find(job.id);
-                if (it != job_map.end() && !it->second.deleted)
+                if (!job.deleted)
                 {
                     auto calculated_next = job.next; 
                     int attempt{0};
@@ -716,7 +715,7 @@ private:
                         attempt ++;
                     } while (calculated_next <= std::chrono::system_clock::now() && attempt < 10);
 
-                    it->second.next = calculated_next; 
+                    job.next = calculated_next; 
                     job_queue.emplace(job.id, calculated_next);
                     cv.notify_one(); 
                 }
