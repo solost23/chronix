@@ -17,6 +17,9 @@
      };
  
      auto scheduler = std::make_shared<ChronixScheduler>(4);
+
+     scheduler->start();
+
      scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
  
      auto error_callback = [](size_t job_id, const std::exception& e) {
@@ -61,7 +64,6 @@
      });
  
      scheduler->load_state(); 
-     scheduler->start(); 
  
      while(true)
      {

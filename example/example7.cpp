@@ -15,7 +15,9 @@ void example7()
     }; 
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
-    // scheduler->set_persistence(std::make_shared<FilePersistenceJson<Job>>("./jobs.json"));
+
+    scheduler->start();
+
     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
 
     // TODO: 任务结束钩子，持久化快照, 暂时全量更新
@@ -29,9 +31,6 @@ void example7()
         size_t job_id = scheduler->add_cron_job(jobs[i].first, jobs[i].second);
         scheduler->set_end_callback(job_id, end_callback);
     }
-
-    // 开始执行
-    scheduler->start(); 
 
     std::this_thread::sleep_for(std::chrono::seconds(3));
 

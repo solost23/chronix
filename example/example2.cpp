@@ -18,12 +18,12 @@ void example2()
 
     auto scheduler = std::make_shared<ChronixScheduler>(4); 
 
+    scheduler->start(); 
+
     for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_cron_job(jobs[i].first, jobs[i].second);
     }
-
-    scheduler->start();  
 
     while (true)
     {

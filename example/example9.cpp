@@ -12,13 +12,14 @@ void example9()
     }; 
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
+    scheduler->start(); 
+
+    scheduler->set_metrics_enabled(true);
 
     for (size_t i = 0; i != jobs.size(); i ++)
     {
         scheduler->add_cron_job(jobs[i].first, jobs[i].second);
     }
-
-    scheduler->start();
 
     auto format_time = [](std::chrono::system_clock::time_point tp) {
         std::time_t tt = std::chrono::system_clock::to_time_t(tp);

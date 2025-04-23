@@ -10,10 +10,12 @@ void example4()
 {
     std::vector<std::pair<std::string, std::function<void()>>> jobs{
         {"*/5 * * * * *", [](){ printer("[任务1] 每5秒执行一次"); throw std::runtime_error("[任务1] 执行失败"); }}, 
-        {"*/8 * * * * *", [](){ printer("[任务2] 每8秒执行一次"); }}, 
+        // {"*/8 * * * * *", [](){ printer("[任务2] 每8秒执行一次"); }}, 
     }; 
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
+
+    scheduler->start();
 
     auto start_callback = [](size_t job_id) {
         printer("任务ID: ", job_id, " 开始执行");
@@ -33,8 +35,6 @@ void example4()
         scheduler->set_success_callback(job_id, success_callback);
         scheduler->set_error_callback(job_id, error_callback);
     }
-
-    scheduler->start();
 
     while(true)
     {

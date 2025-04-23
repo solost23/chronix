@@ -15,6 +15,9 @@ void example5()
     };
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
+
+    scheduler->start();
+
     scheduler->set_persistence(std::make_shared<FilePersistenceJson<Job>>("./jobs.json"));
 
     auto error_callback = [](size_t job_id, const std::exception& e) { 
@@ -53,7 +56,6 @@ void example5()
     }); 
 
     scheduler->load_state(); 
-    scheduler->start(); 
 
     while(true)
     {
