@@ -1,33 +1,34 @@
-#pragma once 
+#pragma once
 
-#include <iostream> 
-#include <vector> 
-#include <queue> 
-#include <thread> 
-#include <mutex>
-#include <future> 
 #include <atomic>
-#include <functional> 
 #include <condition_variable>
-
+#include <functional>
+#include <future>
+#include <iostream>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
 
 class ThreadPool
 {
 public:
-    explicit ThreadPool(size_t thread_count = std::thread::hardware_concurrency()) : stop_flag(false)
+    explicit ThreadPool(
+        size_t thread_count = std::thread::hardware_concurrency())
+        : stop_flag(false)
     {
-        for (size_t i = 0; i != thread_count; i ++)
+        for (size_t i = 0; i != thread_count; i++)
         {
             workers.emplace_back([this]() {
                 for (;;)
                 {
-                    Task task; 
+                    Task task;
 
                     {
-                        std::unique_lock<std::mutex> lock(queue_mutex); 
+                        std::unique_lock<std::mutex> lock(queue_mutex);
                         condition.wait(lock, [this]() {
-                            return stop_flag || !tasks.empty(); 
-                        }); 
+                            return stop_flag || !tasks.empty();
+                        });
 
                         if (stop_flag && tasks.empty())
                         {
@@ -35,12 +36,12 @@ public:
                         }
 
                         task = std::move(tasks.front());
-                        tasks.pop(); 
+                        tasks.pop();
                     }
 
-                    task(); 
+                    task();
                 }
-            }); 
+            });
         }
     }
 
@@ -49,12 +50,14 @@ public:
     ThreadPool& operator=(const ThreadPool&) = delete;
 
     // submit a task to the thread pool
-    template<class F, class... Args>
-    auto submit(F&& f, Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type>
+    template <class F, class... Args>
+    auto submit(F&& f, Args&&... args)
+        -> std::future<typename std::invoke_result<F, Args...>::type>
     {
         using return_type = typename std::invoke_result<F, Args...>::type;
-        
-        auto task = std::make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...)); 
+
+        auto task = std::make_shared<std::packaged_task<return_type()>>(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
         std::future<return_type> resp = task->get_future();
         {
@@ -62,19 +65,19 @@ public:
 
             if (stop_flag)
             {
-                throw std::runtime_error("submit on stopped ThreadPool"); 
+                throw std::runtime_error("submit on stopped ThreadPool");
             }
 
             tasks.emplace([task]() { (*task)(); });
         }
         condition.notify_one();
-        return resp; 
+        return resp;
     }
 
     ~ThreadPool()
     {
         {
-            std::lock_guard<std::mutex> lock(queue_mutex); 
+            std::lock_guard<std::mutex> lock(queue_mutex);
             stop_flag = true;
         }
 
@@ -98,4 +101,4 @@ private:
     std::mutex queue_mutex;
     std::condition_variable condition;
     std::atomic<bool> stop_flag;
-}; 
+};

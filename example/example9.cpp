@@ -1,22 +1,35 @@
 #include "example/example9.h"
 
-#include "example/printer.h"
 #include "chronix/chronix.h"
+#include "example/printer.h"
 
 void example9()
 {
     std::vector<std::pair<std::string, std::function<void()>>> jobs{
-        {"*/3 * * * * *", []() {std::this_thread::sleep_for(std::chrono::seconds(1)); printer("[任务1] 每3秒执行一次"); }}, // success
-        {"*/5 * * * * *", []() {std::this_thread::sleep_for(std::chrono::seconds(3)); printer("[任务2] 每5秒执行一次"); throw std::runtime_error("[任务2] 执行失败"); }}, // failed
-        {"*/7 * * * * *", []() {std::this_thread::sleep_for(std::chrono::seconds(5)); printer("[任务3] 每7秒执行一次"); }}, // paused
-    }; 
+        {"*/3 * * * * *",
+         []() {
+             std::this_thread::sleep_for(std::chrono::seconds(1));
+             printer("[任务1] 每3秒执行一次");
+         }},  // success
+        {"*/5 * * * * *",
+         []() {
+             std::this_thread::sleep_for(std::chrono::seconds(3));
+             printer("[任务2] 每5秒执行一次");
+             throw std::runtime_error("[任务2] 执行失败");
+         }},  // failed
+        {"*/7 * * * * *",
+         []() {
+             std::this_thread::sleep_for(std::chrono::seconds(5));
+             printer("[任务3] 每7秒执行一次");
+         }},  // paused
+    };
 
     auto scheduler = std::make_shared<ChronixScheduler>(4);
-    scheduler->start(); 
+    scheduler->start();
 
     scheduler->set_metrics_enabled(true);
 
-    for (size_t i = 0; i != jobs.size(); i ++)
+    for (size_t i = 0; i != jobs.size(); i++)
     {
         scheduler->add_cron_job(jobs[i].first, jobs[i].second);
     }
@@ -34,23 +47,29 @@ void example9()
         printer("当前的任务总数: ", scheduler->get_job_count());
         printer("当前跑任务总数: ", scheduler->get_running_job_count());
 
-        for (size_t i = 1; i != 4; i ++)
+        for (size_t i = 1; i != 4; i++)
         {
             printer("-----------------------");
             auto metrics = scheduler->get_job_metrics(i);
             printer("指标信息-执行次数: ", metrics.execution_count);
             printer("指标信息-成功次叔: ", metrics.success_count);
             printer("指标信息-失败次数: ", metrics.error_count);
-            printer("指标信息-最后执行时间: ", format_time(metrics.last_run_time));
-            printer("指标信息-最后执行时长: ", metrics.last_duration.count(), "ms");
-            printer("指标信息-执行总时长: ", metrics.total_duration.count(), "ms");
-            printer("指标信息-最大执行时间: ", metrics.max_duration.count(), "ms");
-            printer("指标信息-最小执行时间: ", metrics.min_duration.count(), "ms");
-            printer("指标信息-执行平均耗时: ", metrics.average_duration().count(), "ms");
+            printer("指标信息-最后执行时间: ",
+                    format_time(metrics.last_run_time));
+            printer("指标信息-最后执行时长: ", metrics.last_duration.count(),
+                    "ms");
+            printer("指标信息-执行总时长: ", metrics.total_duration.count(),
+                    "ms");
+            printer("指标信息-最大执行时间: ", metrics.max_duration.count(),
+                    "ms");
+            printer("指标信息-最小执行时间: ", metrics.min_duration.count(),
+                    "ms");
+            printer("指标信息-执行平均耗时: ",
+                    metrics.average_duration().count(), "ms");
             printer("指标信息-执行成功率: ", metrics.success_rate());
             printer("指标信息-执行失败率: ", metrics.error_rate());
         }
-        
+
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }

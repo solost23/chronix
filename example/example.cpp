@@ -1,8 +1,8 @@
 /*
  * main
  */
-#include <vector> 
 #include <thread>
+#include <vector>
 
 #include "example/example1.h"
 #include "example/example2.h"
@@ -27,13 +27,13 @@ int main(int argc, char** argv)
     examples.emplace_back(example8);
     examples.emplace_back(example9);
 
-    for (auto& e : examples) 
+    for (auto& e : examples)
     {
         if (e.joinable())
         {
-            e.join(); 
+            e.join();
         }
     }
 
-    return 0; 
+    return 0;
 }

@@ -1,0 +1,65 @@
+---
+# 基础风格基于 Google，但覆盖了大括号换行规则
+BasedOnStyle: Google
+
+# 强制大括号换行配置
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true             # 类定义后
+  AfterControlStatement: Always  # if/for/while 后
+  AfterEnum: true             # 枚举定义后
+  AfterFunction: true         # 函数定义后
+  AfterNamespace: true        # 命名空间后
+  AfterStruct: true           # 结构体定义后
+  AfterUnion: true            # 联合体定义后
+  BeforeCatch: true           # catch 前
+  BeforeElse: true            # else 前
+  IndentBraces: false         # 不缩进大括号
+  SplitEmptyFunction: false   # 空函数不换行
+  SplitEmptyRecord: false     # 空类不换行
+
+# 与 Google 风格一致的其它重要配置
+AccessModifierOffset: -4      # 访问修饰符缩进
+AlignAfterOpenBracket: Align  # 括号内对齐
+AlignConsecutiveAssignments: false
+AlignEscapedNewlines: Left
+AlignOperands: true           # 操作符对齐
+AlignTrailingComments: true   # 尾随注释对齐
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None  # 所有函数大括号换行
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: true
+BinPackParameters: true
+ColumnLimit: 80               # 行宽限制
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+Cpp11BracedListStyle: true
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IndentCaseLabels: false
+IndentWidth: 4                # 缩进4空格
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
+PointerAlignment: Right
+ReflowComments: true
+SortIncludes: true            # 自动排序头文件
+SortUsingDeclarations: true
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInContainerLiterals: true
+Standard: Cpp11
+TabWidth: 4
+UseTab: Never                 # 不使用tab
