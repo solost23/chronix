@@ -5,7 +5,8 @@ services:
     build:
       context: . 
       dockerfile: Dockerfile 
-    container_name: example 
+    image: chronix-example:0.0.1 
+    container_name: chronix-example 
     restart: always 
     environment:
       TZ: "Asia/Shanghai"
