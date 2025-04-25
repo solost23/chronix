@@ -58,6 +58,7 @@ file(GLOB_RECURSE SELF_PROJECT_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/example7.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/example8.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/example9.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/example10.cpp
 )
 
 execute_process(
