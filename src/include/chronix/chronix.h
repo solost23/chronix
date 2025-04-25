@@ -100,6 +100,37 @@ public:
         return job_id;
     }
 
+    // add immediate job
+    size_t add_immediate_job(Task task)
+    {
+        size_t job_id = next_job_id++;
+
+        auto earlier = 
+            std::chrono::system_clock::now() - std::chrono::milliseconds(1);
+
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            job_queue.emplace(job_id, earlier);
+            job_map.emplace(job_id, Job{
+                                        job_id, 
+                                        {}, 
+                                        "",
+                                        std::move(task),
+                                        earlier, 
+                                        nullptr, 
+                                        nullptr, 
+                                        nullptr, 
+                                        nullptr, 
+                                        JobStatus::Pending, 
+                                        JobResult::Unknown, 
+                                        true,  
+            }); 
+        }
+
+        cv.notify_one();
+        return job_id; 
+    }
+
     void set_start_callback(size_t job_id, StartCallback callback)
     {
         std::lock_guard<std::mutex> lock(mutex);

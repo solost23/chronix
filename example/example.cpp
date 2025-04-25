@@ -13,6 +13,7 @@
 #include "example/example7.h"
 #include "example/example8.h"
 #include "example/example9.h"
+#include "example/example10.h"
 
 int main(int argc, char** argv)
 {
@@ -26,7 +27,8 @@ int main(int argc, char** argv)
     examples.emplace_back(example7);
     examples.emplace_back(example8);
     examples.emplace_back(example9);
-
+    examples.emplace_back(example10);
+    
     for (auto& e : examples)
     {
         if (e.joinable())
