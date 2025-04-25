@@ -11,4 +11,4 @@ cmake ../ && make -j
 cd ../../ && rm -rf performance/build 
 
 # 执行
-cd ./bin && ./performance 
+# cd ./bin && ./performance 

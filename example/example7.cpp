@@ -18,7 +18,7 @@ void example7()
 
     scheduler->start();
 
-    scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
+    scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("mysql", 33060, "root", "123", "chronix"));
 
     // TODO: 任务结束钩子，持久化快照, 暂时全量更新
     auto end_callback = [scheduler](size_t job_id) {

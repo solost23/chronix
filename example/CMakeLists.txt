@@ -77,7 +77,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 if (${ARCH} STREQUAL "x86_64")
     set(MYSQLX_LIB_DIR "${CHRONIX_ROOT_DIR}/lib/mysqlx_x86_64")
-elseif (${ARCH} STREQUAL "arm64")
+elseif (${ARCH} STREQUAL "arm64" OR ${ARCH} STREQUAL "aarch64")
     set(MYSQLX_LIB_DIR "${CHRONIX_ROOT_DIR}/lib/mysqlx_arm64")
 else()
     message(FATAL_ERROR "Unsupported architecture: ${ARCH}")

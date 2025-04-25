@@ -1,6 +1,17 @@
 version: "3.5"
 
 services:
+  example:
+    build:
+      context: . 
+      dockerfile: Dockerfile 
+    container_name: example 
+    restart: always 
+    environment:
+      TZ: "Asia/Shanghai"
+    networks:
+      - app-net 
+      
   mysql:
     image: mysql:8.0.36
     container_name: chronix-mysql
@@ -13,9 +24,9 @@ services:
       - "33036:33060"
     volumes:
       - "./sql:/docker-entrypoint-initdb.d"
-      - "/etc/mysql/conf.d:/etc/mysql/conf.d"
-      - "/var/lib/mysql:/var/lib/mysql"
-      - "/var/log/mysql:/var/log/mysql"
+      - "./etc/mysql/conf.d:/etc/mysql/conf.d"
+      - "./var/lib/mysql:/var/lib/mysql"
+      - "./var/log/mysql:/var/log/mysql"
     networks:
       - app-net  
 

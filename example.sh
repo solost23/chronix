@@ -11,4 +11,4 @@ cmake ../ && make -j
 cd ../../ && rm -rf example/build 
 
 # 执行
-cd ./bin && ./example 
+# cd ./bin && ./example 

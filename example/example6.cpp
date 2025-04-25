@@ -20,7 +20,7 @@
 
      scheduler->start();
 
-     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "123", "chronix"));
+     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("mysql", 33060, "root", "123", "chronix"));
  
      auto error_callback = [](size_t job_id, const std::exception& e) {
          printer("任务ID: ", job_id, " 执行失败，错误: ", e.what());
