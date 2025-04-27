@@ -105,30 +105,30 @@ public:
     {
         size_t job_id = next_job_id++;
 
-        auto earlier = 
+        auto earlier =
             std::chrono::system_clock::now() - std::chrono::milliseconds(1);
 
         {
             std::lock_guard<std::mutex> lock(mutex);
             job_queue.emplace(job_id, earlier);
             job_map.emplace(job_id, Job{
-                                        job_id, 
-                                        {}, 
+                                        job_id,
+                                        {},
                                         "",
                                         std::move(task),
-                                        earlier, 
-                                        nullptr, 
-                                        nullptr, 
-                                        nullptr, 
-                                        nullptr, 
-                                        JobStatus::Pending, 
-                                        JobResult::Unknown, 
-                                        true,  
-            }); 
+                                        earlier,
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        JobStatus::Pending,
+                                        JobResult::Unknown,
+                                        true,
+                                    });
         }
 
         cv.notify_one();
-        return job_id; 
+        return job_id;
     }
 
     void set_start_callback(size_t job_id, StartCallback callback)
@@ -461,6 +461,10 @@ public:
             snapshot.reserve(job_map.size());
             for (const auto& [id, job] : job_map)
             {
+                if (job.deleted)
+                {
+                    continue;
+                }
                 snapshot.emplace_back(job);
             }
         }
@@ -539,9 +543,16 @@ public:
 
     void register_job_initializer(size_t job_id, JobInitializer initializer)
     {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        if (job_map.find(job_id) == job_map.end())
+        {
+            throw std::runtime_error("Job ID " + std::to_string(job_id) +
+                                     " not found");
+        }
+
         if (initializer)
         {
-            std::lock_guard<std::mutex> lock(mutex);
             job_initializers_[job_id] = initializer;
         }
     }
