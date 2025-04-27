@@ -25,6 +25,13 @@ enum class JobResult
     Failed
 };
 
+enum class JobType
+{
+    Cron,
+    Once,
+    Immediate
+};
+
 struct JobMetrics
 {
     size_t execution_count{0};
@@ -109,7 +116,7 @@ struct Job
     JobStatus status;
     JobResult result;
 
-    bool once;
+    JobType type;
 
     JobMetrics metrics;
 

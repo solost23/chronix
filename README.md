@@ -48,7 +48,7 @@ scheduler->set_end_callback(job_id, [](int id) { std::cout << "Job " << id << " 
 
 ```cpp
 // Execute once after a delay of three seconds
-scheduler->add_one_time_job(std::chrono::system_clock::now() + std::chrono::seconds(3), []() { printer("[任务2]延时3秒执行"); });
+scheduler->add_once_job(std::chrono::system_clock::now() + std::chrono::seconds(3), []() { printer("[任务2]延时3秒执行"); });
 ```
 
 ### 4. Control Job State

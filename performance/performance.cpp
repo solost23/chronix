@@ -41,101 +41,112 @@ int main(int argc, char* argv[])
     auto scheduler = std::make_shared<ChronixScheduler>(THREAD_COUNT);
     scheduler->set_metrics_enabled(true);
 
-    scheduler->start();
-
-    for (size_t r = 0; r < ROUNDS; ++r)
+    try
     {
-        std::atomic<size_t> success_count{0};
-        std::atomic<size_t> error_count{0};
-        std::mutex mtx;
-        std::condition_variable cv;
-        std::atomic<size_t> done_count{0};
+        scheduler->start();
 
-        std::vector<std::chrono::milliseconds> durations;
-        std::chrono::milliseconds max_duration{0};
-        std::chrono::milliseconds min_duration{
-            std::chrono::milliseconds::max()};
-        std::chrono::milliseconds total_duration{0};
-
-        auto r_start = std::chrono::steady_clock::now();
-
-        auto jobs = (r + 1) * JOB_STEP;
-        for (size_t i = 0; i < jobs; ++i)
+        for (size_t r = 0; r < ROUNDS; ++r)
         {
-            scheduler->add_once_job(
-                std::chrono::system_clock::now() +
-                    std::chrono::milliseconds(10),
-                [&, i]() {
-                    using namespace std::chrono;
-                    auto start = steady_clock::now();
+            std::atomic<size_t> success_count{0};
+            std::atomic<size_t> error_count{0};
+            std::mutex mtx;
+            std::condition_variable cv;
+            std::atomic<size_t> done_count{0};
 
-                    static thread_local std::mt19937 rng(
-                        std::random_device{}());
-                    std::uniform_int_distribution<int> sleep_dist(1, 10);
-                    std::uniform_real_distribution<double> error_dist(0.0, 1.0);
+            std::vector<std::chrono::milliseconds> durations;
+            std::chrono::milliseconds max_duration{0};
+            std::chrono::milliseconds min_duration{
+                std::chrono::milliseconds::max()};
+            std::chrono::milliseconds total_duration{0};
 
-                    int sleep_time = sleep_dist(rng);
-                    std::this_thread::sleep_for(milliseconds(sleep_time));
+            auto r_start = std::chrono::steady_clock::now();
 
-                    auto end = steady_clock::now();
-                    auto duration = duration_cast<milliseconds>(end - start);
+            auto jobs = (r + 1) * JOB_STEP;
+            for (size_t i = 0; i < jobs; ++i)
+            {
+                scheduler->add_once_job(
+                    std::chrono::system_clock::now() +
+                        std::chrono::milliseconds(10),
+                    [&, i]() {
+                        using namespace std::chrono;
+                        auto start = steady_clock::now();
 
-                    {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        durations.push_back(duration);
-                        total_duration += duration;
-                        if (duration > max_duration)
-                            max_duration = duration;
-                        if (duration < min_duration)
-                            min_duration = duration;
-                    }
+                        static thread_local std::mt19937 rng(
+                            std::random_device{}());
+                        std::uniform_int_distribution<int> sleep_dist(1, 10);
+                        std::uniform_real_distribution<double> error_dist(0.0,
+                                                                          1.0);
 
-                    if (error_dist(rng) < 0.1)
-                    {
-                        error_count++;
-                    }
-                    else
-                    {
-                        success_count++;
-                    }
+                        int sleep_time = sleep_dist(rng);
+                        std::this_thread::sleep_for(milliseconds(sleep_time));
 
-                    if (++done_count == jobs)
-                    {
-                        cv.notify_one();
-                    }
-                });
+                        auto end = steady_clock::now();
+                        auto duration =
+                            duration_cast<milliseconds>(end - start);
+
+                        {
+                            std::lock_guard<std::mutex> lock(mtx);
+                            durations.push_back(duration);
+                            total_duration += duration;
+                            if (duration > max_duration)
+                                max_duration = duration;
+                            if (duration < min_duration)
+                                min_duration = duration;
+                        }
+
+                        if (error_dist(rng) < 0.1)
+                        {
+                            error_count++;
+                        }
+                        else
+                        {
+                            success_count++;
+                        }
+
+                        if (++done_count == jobs)
+                        {
+                            cv.notify_one();
+                        }
+                    });
+            }
+
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                cv.wait(lock, [&]() { return done_count == jobs; });
+            }
+
+            auto r_end = std::chrono::steady_clock::now();
+            double r_duration =
+                std::chrono::duration<double>(r_end - r_start).count();
+
+            double avg_ms = durations.empty() ? 0
+                                              : total_duration.count() * 1.0 /
+                                                    durations.size();
+            double tps = durations.size() / r_duration;
+            double succ_rate = 100.0 * success_count / jobs;
+            double err_rate = 100.0 * error_count / jobs;
+
+            out << r + 1 << "," << jobs << "," << success_count << ","
+                << error_count << "," << avg_ms << "," << max_duration.count()
+                << ","
+                << (min_duration == std::chrono::milliseconds::max()
+                        ? 0
+                        : min_duration.count())
+                << "," << r_duration << "," << tps << "," << succ_rate << ","
+                << err_rate << "\r\n";
+
+            out.flush();
+            std::cout << "[Round " << r + 1 << "] 一次性任务压测完成 ✅"
+                      << std::endl;
         }
 
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [&]() { return done_count == jobs; });
-        }
-
-        auto r_end = std::chrono::steady_clock::now();
-        double r_duration =
-            std::chrono::duration<double>(r_end - r_start).count();
-
-        double avg_ms = durations.empty()
-                            ? 0
-                            : total_duration.count() * 1.0 / durations.size();
-        double tps = durations.size() / r_duration;
-        double succ_rate = 100.0 * success_count / jobs;
-        double err_rate = 100.0 * error_count / jobs;
-
-        out << r + 1 << "," << jobs << "," << success_count << ","
-            << error_count << "," << avg_ms << "," << max_duration.count()
-            << ","
-            << (min_duration == std::chrono::milliseconds::max()
-                    ? 0
-                    : min_duration.count())
-            << "," << r_duration << "," << tps << "," << succ_rate << ","
-            << err_rate << "\r\n";
-
-        out.flush();
-        std::cout << "[Round " << r + 1 << "] 一次性任务压测完成 ✅"
-                  << std::endl;
+        std::cout << "✅ 所有轮次一次性任务压测完成，结果写入成功" << std::endl;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return -1;
     }
 
-    std::cout << "✅ 所有轮次一次性任务压测完成，结果写入成功" << std::endl;
     return 0;
 }

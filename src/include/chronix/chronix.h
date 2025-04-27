@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -63,7 +64,7 @@ public:
                                         nullptr,
                                         JobStatus::Pending,
                                         JobResult::Unknown,
-                                        false,
+                                        JobType::Cron,
                                     });
         }
 
@@ -92,7 +93,7 @@ public:
                                         nullptr,
                                         JobStatus::Pending,
                                         JobResult::Unknown,
-                                        true,
+                                        JobType::Once,
                                     });
         }
 
@@ -123,7 +124,7 @@ public:
                                         nullptr,
                                         JobStatus::Pending,
                                         JobResult::Unknown,
-                                        true,
+                                        JobType::Immediate,
                                     });
         }
 
@@ -251,7 +252,7 @@ public:
 
                     if (job_queue.empty())
                     {
-                        cv.wait_for(lock, std::chrono::milliseconds(100));
+                        cv.wait(lock);
                         continue;
                     }
 
@@ -461,7 +462,7 @@ public:
             snapshot.reserve(job_map.size());
             for (const auto& [id, job] : job_map)
             {
-                if (job.deleted)
+                if (job.deleted || job.type == JobType::Immediate)
                 {
                     continue;
                 }
@@ -498,15 +499,16 @@ public:
                         }
                         catch (const std::exception& e)
                         {
-                            std::cerr << "[Error] Failed to initialize job "
-                                      << job.id << ": " << e.what()
-                                      << std::endl;
+                            throw std::runtime_error(
+                                "Failed to initialize job" +
+                                std::to_string(job.id) + "：" + e.what());
                         }
                     }
                     else
                     {
-                        std::cerr << "[Warning] Initializer not found for job "
-                                  << job.id << std::endl;
+                        throw std::runtime_error(
+                            "Initializer not found for job " +
+                            std::to_string(job.id));
                     }
                     return std::nullopt;
                 }));
@@ -539,6 +541,8 @@ public:
                 local_queue.pop();
             }
         }
+
+        cv.notify_all();
     }
 
     void register_job_initializer(size_t job_id, JobInitializer initializer)
@@ -691,7 +695,7 @@ private:
             if (job.status != JobStatus::Pending)
             {
                 // 非Peding状态 & 周期性任务 下次继续调度
-                if (!job.once)
+                if (job.type == JobType::Cron)
                 {
                     auto calculated_next = job.next;
                     int attempt{0};
@@ -779,7 +783,7 @@ private:
                 job.end_callback(job.id);
             }
 
-            if (job.once)
+            if (job.type == JobType::Once || job.type == JobType::Immediate)
             {
                 std::lock_guard<std::mutex> lock(mutex);
 

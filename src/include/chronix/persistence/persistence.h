@@ -57,6 +57,20 @@ public:
         return "Unknown";
     }
 
+    virtual std::string to_string(JobType type)
+    {
+        switch (type)
+        {
+        case JobType::Cron:
+            return "Cron";
+        case JobType::Immediate:
+            return "Immediate";
+        case JobType::Once:
+            return "Once";
+        }
+        return "Cron";
+    }
+
     virtual JobStatus from_string_status(const std::string& s)
     {
         if (s == "Running")
@@ -73,6 +87,18 @@ public:
         if (s == "Failed")
             return JobResult::Failed;
         return JobResult::Unknown;
+    }
+
+    virtual JobType from_string_type(const std::string& s)
+    {
+        if (s == "Cron")
+            return JobType::Cron;
+        else if (s == "Immediate")
+            return JobType::Immediate;
+        else if (s == "Once")
+            return JobType::Once;
+        else
+            return JobType::Cron;
     }
 };
 
@@ -143,6 +169,7 @@ private:
     nlohmann::json serialize(const T& job)
     {
         return nlohmann::json{{"id", job.id},
+                              {"type", this->to_string(job.type)},
                               {"expr", job.expr_str},
                               {"status", this->to_string(job.status)},
                               {"result", this->to_string(job.result)}};
@@ -152,6 +179,7 @@ private:
     {
         T job;
         job.id = j.at("id").get<size_t>();
+        job.type = this->from_string_type(j.value("type", "Cron"));
         job.expr_str = j.at("expr").get<std::string>();
         job.expr = cron::make_cron(job.expr_str);
         job.status = this->from_string_status(j.value("status", "Pending"));
@@ -180,16 +208,17 @@ public:
         std::vector<T> jobs;
         mysqlx::Table table = db.getTable("jobs");
         mysqlx::RowResult rows =
-            table.select("id", "expr", "status", "result").execute();
+            table.select("id", "type", "expr", "status", "result").execute();
 
         for (auto row : rows)
         {
             T job;
             job.id = static_cast<size_t>(row[0].get<uint64_t>());
-            job.expr_str = row[1].get<std::string>();
+            job.type = this->from_string_type(row[1].get<std::string>());
+            job.expr_str = row[2].get<std::string>();
             job.expr = cron::make_cron(job.expr_str);
-            job.status = this->from_string_status(row[2].get<std::string>());
-            job.result = this->from_string_result(row[3].get<std::string>());
+            job.status = this->from_string_status(row[3].get<std::string>());
+            job.result = this->from_string_result(row[4].get<std::string>());
             job.next =
                 cron::cron_next(job.expr, std::chrono::system_clock::now());
             jobs.emplace_back(job);
@@ -216,6 +245,7 @@ public:
                 {
                     auto update =
                         table.update()
+                            .set("type", this->to_string(job.type))
                             .set("expr", job.expr_str)
                             .set("status", this->to_string(job.status))
                             .set("result", this->to_string(job.result))
@@ -225,8 +255,8 @@ public:
                 }
                 else
                 {
-                    table.insert("id", "expr", "status", "result")
-                        .values(job.id, job.expr_str,
+                    table.insert("id", "type", "expr", "status", "result")
+                        .values(job.id, this->to_string(job.type), job.expr_str,
                                 this->to_string(job.status),
                                 this->to_string(job.result))
                         .execute();
