@@ -440,6 +440,14 @@ public:
         {
             worker.join();
         }
+
+        running_save = false;
+
+        cv_save.notify_all();
+        if (consumer.joinable())
+        {
+            consumer.join();
+        }
     }
 
     // set persistence
@@ -471,6 +479,16 @@ public:
         }
 
         persistence->save(snapshot);
+    }
+
+    void save_immediately()
+    {
+        if (!persistence)
+        {
+            throw std::runtime_error("No set persistence");
+        }
+
+        std::vector<Job> snapshot;
     }
 
     void load_state()
@@ -816,6 +834,33 @@ private:
         thread_pool.submit(wrapped_task);
     }
 
+    void consumer_and_save()
+    {
+        while (running_save)
+        {
+            std::vector<Job> jobs;
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                cv_save.wait(lock, [this]() {
+                    return !consumer_queue.empty() || !running_save;
+                });
+
+                if (!running_save && consumer_queue.empty())
+                {
+                    break;
+                }
+
+                jobs = std::move(consumer_queue);
+                consumer_queue.clear();
+            }
+
+            if (!jobs.empty())
+            {
+                persistence->save(jobs);
+            }
+        }
+    }
+
     std::priority_queue<JobNode, std::vector<JobNode>, std::greater<JobNode>>
         job_queue;
     std::unordered_map<size_t, Job> job_map;
@@ -833,4 +878,9 @@ private:
     std::atomic<bool> metrics_enabled;
 
     std::condition_variable cv;
+
+    std::vector<Job> consumer_queue;
+    std::thread consumer;
+    std::condition_variable cv_save;
+    std::atomic<bool> running_save;
 };
