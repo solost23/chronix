@@ -441,12 +441,13 @@ public:
             worker.join();
         }
 
-        running_save = false;
+        consumer_running = false;
 
-        cv_save.notify_all();
-        if (consumer.joinable())
+        consumer_cv.notify_all();
+
+        if (consumer_worker.joinable())
         {
-            consumer.join();
+            consumer_worker.join();
         }
     }
 
@@ -456,39 +457,110 @@ public:
         persistence = persistence_backend;
     }
 
-    void save_state()
+    // void save_state()
+    // {
+    //     if (!persistence)
+    //     {
+    //         throw std::runtime_error("No set persistence");
+    //     }
+
+    //     std::vector<Job> snapshot;
+
+    //     {
+    //         std::lock_guard<std::mutex> lock(mutex);
+    //         snapshot.reserve(job_map.size());
+    //         for (const auto& [id, job] : job_map)
+    //         {
+    //             if (job.deleted || job.type == JobType::Immediate)
+    //             {
+    //                 continue;
+    //             }
+    //             snapshot.emplace_back(job);
+    //         }
+    //     }
+
+    //     persistence->save(snapshot);
+    // }
+
+    void save_immediately(size_t job_id)
     {
         if (!persistence)
         {
             throw std::runtime_error("No set persistence");
         }
 
-        std::vector<Job> snapshot;
+        // 启动消费者
+        consumer();
+
+        Job snapshot; 
 
         {
             std::lock_guard<std::mutex> lock(mutex);
-            snapshot.reserve(job_map.size());
+
+            auto it = job_map.find(job_id);
+            if (it == job_map.end())
+            {
+                throw std::runtime_error("Job ID " + std::to_string(job_id) +
+                                     " not found");
+            }
+
+            if (snapshot.deleted)
+            {
+                throw std::runtime_error("Job ID " + std::to_string(job_id) +
+                                     " is deleted"); 
+            }
+
+            if (snapshot.type == JobType::Immediate)
+            {
+                throw std::runtime_error("Job ID " + std::to_string(job_id) +
+                                     " is immediate");
+            }
+
+            snapshot = it->second;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(consumer_mutex);
+            consumer_queue.emplace(std::vector<Job>{snapshot});
+        }
+        
+        consumer_cv.notify_one(); 
+    }
+
+    void save_periodically()
+    {
+        if (!persistence)
+        {
+            throw std::runtime_error("No set persistence");
+        }
+
+        // 启动消费者
+        consumer(); 
+
+        std::vector<Job> snapshot;
+        snapshot.reserve(job_map.size());
+
+        {
+            std::lock_guard<std::mutex> lock(mutex);
             for (const auto& [id, job] : job_map)
             {
                 if (job.deleted || job.type == JobType::Immediate)
                 {
-                    continue;
+                    continue; 
                 }
                 snapshot.emplace_back(job);
             }
         }
 
-        persistence->save(snapshot);
-    }
-
-    void save_immediately()
-    {
-        if (!persistence)
         {
-            throw std::runtime_error("No set persistence");
-        }
+            if (!snapshot.empty())
+            {
+                std::lock_guard<std::mutex> lock(consumer_mutex);
+                consumer_queue.emplace(std::move(snapshot));
+            }
 
-        std::vector<Job> snapshot;
+            consumer_cv.notify_one();
+        }
     }
 
     void load_state()
@@ -834,31 +906,39 @@ private:
         thread_pool.submit(wrapped_task);
     }
 
-    void consumer_and_save()
+    void consumer()
     {
-        while (running_save)
+        if (consumer_running)
         {
-            std::vector<Job> jobs;
-            {
-                std::unique_lock<std::mutex> lock(mutex);
-                cv_save.wait(lock, [this]() {
-                    return !consumer_queue.empty() || !running_save;
-                });
+            return ;
+        }
 
-                if (!running_save && consumer_queue.empty())
+        consumer_running = true;
+
+        consumer_worker = std::thread([this]() {
+            while (consumer_running)
+            {
+                std::vector<Job> snapshot;
+
                 {
-                    break;
+                    std::unique_lock<std::mutex> lock(consumer_mutex);
+
+                    if (consumer_queue.empty())
+                    {
+                        consumer_cv.wait(lock); 
+                        continue; 
+                    }
+
+                    snapshot = std::move(consumer_queue.front());
+                    consumer_queue.pop();
                 }
 
-                jobs = std::move(consumer_queue);
-                consumer_queue.clear();
+                if (!snapshot.empty())
+                {
+                    persistence->save(snapshot);
+                }
             }
-
-            if (!jobs.empty())
-            {
-                persistence->save(jobs);
-            }
-        }
+        });
     }
 
     std::priority_queue<JobNode, std::vector<JobNode>, std::greater<JobNode>>
@@ -879,8 +959,9 @@ private:
 
     std::condition_variable cv;
 
-    std::vector<Job> consumer_queue;
-    std::thread consumer;
-    std::condition_variable cv_save;
-    std::atomic<bool> running_save;
+    std::queue<std::vector<Job>> consumer_queue;
+    std::mutex consumer_mutex;
+    std::thread consumer_worker;
+    std::condition_variable consumer_cv;
+    std::atomic<bool> consumer_running;
 };

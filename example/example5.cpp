@@ -50,7 +50,7 @@ void example5()
         }
 
         // 持久化
-        scheduler->save_state();
+        scheduler->save_periodically();
         // 加载
         scheduler->load_state();
     }
@@ -59,8 +59,6 @@ void example5()
         printer("scheduler error: ", e.what());
         return;
     }
-
-    scheduler->save_state();
 
     while (true)
     {

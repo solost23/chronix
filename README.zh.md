@@ -40,7 +40,6 @@ int job_id = scheduler.add_cron_job("*/10 * * * * *", []() { std::cout << "任�
 scheduler->set_start_callback(job_id, [](int id) { std::cout << "任务 " << id << " 开始执行" << std::endl; });
 scheduler->set_success_callback(job_id, [](int id) { std::cout << "任务 " << id << " 执行成功" << std::endl; });
 scheduler->set_error_callback(job_id, [](int id, std::exception& e) { std::cerr << "任务 " << id << " 执行失败: " << e.what() << std::endl; });
-// 这里可选择持久化任务状态
 scheduler->set_end_callback(job_id, [](int id) { std::cout << "任务" << id << " 执行结束" << std::endl; });
 ```
 
@@ -63,7 +62,9 @@ scheduler.remove_job(job_id);
 
 ```cpp
 scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "******", "chronix"));
-scheduler.save_state();     // 保存任务
+
+scheduler.save_immediately(job_id) // 保存任务
+scheduler.save_periodically();     // 保存任务(全量)
 scheduler.load_state();     // 恢复任务
 
 // 恢复时需重新注册任务行为

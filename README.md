@@ -40,7 +40,6 @@ int job_id = scheduler.add_cron_job("*/10 * * * * *", []() { std::cout << "Job e
 scheduler->set_start_callback(job_id, [](int id) { std::cout << "Job " << id << " started" << std::endl; });
 scheduler->set_success_callback(job_id, [](int id) { std::cout << "Job " << id << " completed successfully" << std::endl; });
 scheduler->set_error_callback(job_id, [](int id, std::exception& e) { std::cerr << "Job " << id << " failed: " << e.what() << std::endl; });
-// You can choose to persist the job state here
 scheduler->set_end_callback(job_id, [](int id) { std::cout << "Job " << id << " finished" << std::endl; });
 ```
 
@@ -63,7 +62,9 @@ scheduler.remove_job(job_id);
 
 ```cpp
 scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>("127.0.0.1", 33036, "root", "******", "chronix"));
-scheduler.save_state();     // Save tasks
+
+scheduler.save_immediately(job_id)  // Save task
+scheduler.save_periodically();     // Save tasks
 scheduler.load_state();     // Restore tasks
 
 // Re-register task behaviors upon restore

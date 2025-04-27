@@ -32,13 +32,13 @@ void example6()
     auto scheduler = std::make_shared<ChronixScheduler>(4);
 
     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>(
-        "mysql", 33060, "root", "123", "chronix"));
+        "localhost", 33036, "root", "123", "chronix"));
 
     // TODO: 任务结束钩子，持久化数据
     static const auto end_callback = [scheduler](size_t job_id) {
         if (scheduler)
         {
-            scheduler->save_state();
+            scheduler->save_immediately(job_id);
         }
         else
         {
@@ -70,8 +70,16 @@ void example6()
         std::this_thread::sleep_for(std::chrono::seconds(15));
         // 任务暂停
         scheduler->pause_job(3);
-        // 持久化 - 也可以选择end_callback中持久化
-        scheduler->save_state();
+
+
+        // 定时持久化
+        size_t count{0};
+        while (count != 11)
+        {
+            scheduler->save_periodically();
+            std::this_thread::sleep_for(std::chrono::seconds(3));
+        }
+        
         // 加载
         scheduler->load_state();
     }
