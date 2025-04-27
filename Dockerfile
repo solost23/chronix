@@ -1,3 +1,5 @@
+ARG TZ=Asia/Shanghai 
+
 FROM ubuntu:22.04 AS builder 
 
 WORKDIR /build 
@@ -5,12 +7,6 @@ WORKDIR /build
 RUN apt update && \
     apt install -y gcc g++ make cmake && \
     apt install -y libssl-dev 
-
-RUN apt update && \
-    apt install -y tzdata && \
-    rm -rf /var/lib/apt/lists/*
-RUN ln -fsn /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo Asia/Shanghai > /etc/timezone
 
 COPY . /build
 RUN chmod +x /build/example.sh && \
@@ -20,11 +16,15 @@ FROM ubuntu:22.04
 
 WORKDIR /app 
 
+RUN apt update && \
+    apt install -y tzdata && \
+    rm -rf /var/lib/apt/lists/*
+RUN ln -fsn /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo Asia/Shanghai > /etc/timezone
+ENV TZ=${TZ}
+
 COPY --from=builder /build/lib /app/lib 
 COPY --from=builder /build/bin/example /app/example
-
-COPY --from=builder /etc/localtime /etc/localtime
-COPY --from=builder /etc/timezone /etc/timezone
 
 # 自动判断架构并设定 LD_LIBRARY_PATH
 CMD ["/bin/bash", "-c", "\
