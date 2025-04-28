@@ -8,21 +8,21 @@ on:
 
 jobs:
   build:
-  strategy:
-    matrix:
-      os: [ubuntu-22.04, macos-latest]
-  runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
 
-  steps:
-  - uses: actions/checkout@v4  
+    steps:
+      - uses: actions/checkout@v4  
 
-  - name: Build     
-    run: |
-      ./example.sh
+      - name: Build     
+        run: |
+          ./example.sh
 
-  - name: Report
-    run: |
-      cd example/build 
-      make 2> build_errors.log
-      echo "## Build Log" >> $GITHUB_STEP_SUMMARY
-      cat build_errors.log >> $GITHUB_STEP_SUMMARY
+      - name: Report
+        run: |
+          cd example/build 
+          make 2> build_errors.log
+          echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+          cat build_errors.log >> $GITHUB_STEP_SUMMARY
