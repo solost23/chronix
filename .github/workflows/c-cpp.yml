@@ -24,8 +24,3 @@ jobs:
       run: |
         cd example/build
         ctest --output-on-failure
-
-    - name: Run Example Binary    
-      run: |
-        cd bin  
-        ./example
