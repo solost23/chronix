@@ -27,5 +27,5 @@ jobs:
 
     - name: Run Example Binary    
       run: |
-        cd example/bin  
+        cd bin  
         ./example
