@@ -13,14 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4  
 
-    - name: Configure & Build     
+    - name: Build     
       run: |
-        mkdir -p example/build
-        cd example/build
-        cmake ../ -DCMAKE_BUILD_TYPE=Release
-        make -j$(nproc)
-
-    - name: Run Tests            
-      run: |
-        cd example/build
-        ctest --output-on-failure
+        ./example.sh 
