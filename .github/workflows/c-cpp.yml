@@ -8,11 +8,25 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v4
-    - run: rm -rf example/build && mkdir -p example/build && cd example/build 
-    - run: cmake ../ -B build -DCMAKE_BUILD_TYPE=Release && make -j
-    - run: ctest --output-on-failure
+    - uses: actions/checkout@v4  
+
+    - name: Configure & Build     
+      run: |
+        mkdir -p example/build
+        cd example/build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release
+        make -j$(nproc)
+
+    - name: Run Tests            
+      run: |
+        cd example/build
+        ctest --output-on-failure
+
+    - name: Run Example Binary    
+      run: |
+        cd example/build/bin  
+        ./example
+        
