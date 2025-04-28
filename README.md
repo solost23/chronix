@@ -12,13 +12,41 @@ Chronix is a lightweight, high-performance C++ task scheduler that supports Cron
 
 ## ✨ Features
 
-- ⏱️ **Cron Expression Scheduling**: Supports second-level precision
-- 🧵 **Thread Pool Concurrency**: Concurrent task scheduling with high performance
-- 🧩 **Task Hook Mechanism**: Supports start, success, end, and failure callbacks
-- 🔄 **Task Persistence**: Task state can be saved and restored
-- ⏯️ **Task Control**: Supports adding, pausing, resuming, and removing tasks
-- ⏳ **Delayed One-Time Jobs**: Supports delayed execution of one-time jobs with second-level precision
-- 📊 **Job Metrics Tracking**: Supports runtime metrics including execution count, success/failure count, and execution time; can be integrated with Prometheus for real-time monitoring
+- ⏱️ **Cron Expression Scheduling**  
+  Supports cron expression scheduling with second-level precision, allowing users to flexibly configure the execution time and frequency of tasks to meet various scheduled task requirements.
+
+- 🧵 **Thread Pool Concurrent Execution**  
+  Utilizes a thread pool to concurrently execute tasks, supporting parallel processing of multiple tasks. This significantly improves the performance and efficiency of task scheduling and execution, ensuring smooth and stable task execution even under high concurrency.
+
+- 🧩 **Task Hook Mechanism**  
+  Provides task lifecycle hooks, supporting callback triggers at different stages of task execution (start, success, end, failure). Users can implement custom logic in these hooks, such as notifications, logging, etc.
+
+- 🔄 **Task Persistence**  
+  Supports task state persistence, including task execution progress, results, and historical states. Tasks can be automatically resumed after system restarts, ensuring task reliability and stability. It supports two persistence methods:
+  - **Scheduled Full Persistence**: The system periodically (e.g., hourly or daily) performs a full save of all task states to ensure data integrity.
+  - **Immediate Incremental Persistence**: Task state changes are immediately saved, only storing the modified parts to reduce save time and resource consumption.
+
+  **Underlying Implementation: Publish/Consume Model**  
+  To ensure the efficiency and scalability of task data persistence, the scheduler adopts a publish/consume model. In this model:
+  - **Publishers** generate task state change information (e.g., task start, end, failure) and push this information to a message queue.
+  - **Consumers** read task change information from the message queue and perform full or incremental data persistence accordingly.
+
+  This publish/consume model achieves asynchronous storage of task data, decouples task execution from storage operations, significantly enhancing system performance and scalability, and avoids blocking caused by database or file system operations during task handling.
+
+- ⏯️ **Task Control**  
+  Task management is more flexible, supporting dynamic addition, pausing, resuming, and deletion of tasks. Users can manage task lifecycles at runtime, ensuring timely adjustments and management of tasks.
+
+- ⏳ **Delayed One-Time Tasks**  
+  Supports one-time delayed task scheduling with second-level precision, allowing tasks to be executed at a specified time. Combined with dynamic task scheduling, this ensures tasks are executed at the right time.
+
+- 📊 **Task Metrics Statistics**  
+  Built-in task runtime metrics, such as execution counts, success/failure counts, execution time, etc., can be recorded in real-time. These metrics can be integrated with monitoring platforms such as Prometheus for real-time monitoring and alerting.
+
+- ⚡ **Immediate Task Execution**  
+  Supports immediate task execution, allowing tasks to be executed instantly without waiting for a scheduled trigger. This is suitable for scenarios that require quick responses, such as system maintenance or urgent task handling.
+
+- 🎯 **Task Jitter Function**  
+  To avoid resource contention caused by a large number of tasks executing simultaneously, the scheduler introduces a jitter function. By adding a random delay to the execution time of tasks, the scheduler reduces task execution concentration, balancing system load and improving system stability and responsiveness.
 
 ---
 
