@@ -7,6 +7,7 @@
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <random>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -46,18 +47,41 @@ public:
             throw std::runtime_error("Invalid cron expression");
         }
 
-        auto next_time =
-            cron::cron_next(expr, std::chrono::system_clock::now());
+        // 防止周期任务立刻执行
+        auto calculated_next = std::chrono::system_clock::now();
+        size_t attempt{0};
+        do
+        {
+            calculated_next = cron::cron_next(expr, calculated_next);
+            attempt++;
+        } while (calculated_next <= std::chrono::system_clock::now() &&
+                 attempt < attempt_max);
+
+        // 引入随机抖动，避免集中处理任务
+        static thread_local std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        auto jitter = std::chrono::milliseconds(dist(rng));
+
+        auto safe_next_time = calculated_next + jitter;
+
+        // auto now = std::chrono::system_clock::now();
+        // auto next_time = cron::cron_next(expr, now);
+
+        // if (next_time <= now)
+        // {
+        //     auto safe_now = now + std::chrono::seconds(1);
+        //     next_time = cron::cron_next(expr, safe_now);
+        // }
 
         {
             std::lock_guard<std::mutex> lock(mutex);
-            job_queue.emplace(job_id, next_time);
+            job_queue.emplace(job_id, safe_next_time);
             job_map.emplace(job_id, Job{
                                         job_id,
                                         expr,
                                         cron_expr,
                                         std::move(task),
-                                        next_time,
+                                        safe_next_time,
                                         nullptr,
                                         nullptr,
                                         nullptr,
@@ -78,6 +102,13 @@ public:
     {
         size_t job_id = next_job_id++;
 
+        // 引入随机抖动，避免集中处理任务
+        static thread_local std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        auto jitter = std::chrono::milliseconds(dist(rng));
+
+        auto safe_next_time = run_at + jitter;
+
         {
             std::lock_guard<std::mutex> lock(mutex);
             job_queue.emplace(job_id, run_at);
@@ -86,7 +117,7 @@ public:
                                         {},
                                         "",
                                         std::move(task),
-                                        run_at,
+                                        safe_next_time,
                                         nullptr,
                                         nullptr,
                                         nullptr,
@@ -106,8 +137,12 @@ public:
     {
         size_t job_id = next_job_id++;
 
-        auto earlier =
-            std::chrono::system_clock::now() - std::chrono::milliseconds(1);
+        // 引入随机抖动，避免集中处理任务
+        static thread_local std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        auto jitter = std::chrono::milliseconds(dist(rng));
+
+        auto earlier = std::chrono::system_clock::now() + jitter;
 
         {
             std::lock_guard<std::mutex> lock(mutex);
@@ -573,6 +608,11 @@ public:
         auto jobs = persistence->load();
 
         std::vector<std::future<std::optional<std::pair<size_t, Job>>>> futures;
+
+        // 引入随机抖动 (0~4s)，避免集中处理任务
+        static thread_local std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+
         for (size_t i = 0; i != jobs.size(); i++)
         {
             futures.emplace_back(std::async(
@@ -585,6 +625,21 @@ public:
                         try
                         {
                             it->second(job);
+
+                            auto calculated_next = job.next;
+                            size_t attempt{0};
+                            do
+                            {
+                                calculated_next =
+                                    cron::cron_next(job.expr, calculated_next);
+                                attempt++;
+                            } while (calculated_next <=
+                                         std::chrono::system_clock::now() &&
+                                     attempt < attempt_max);
+
+                            auto jitter = std::chrono::milliseconds(dist(rng));
+                            job.next = calculated_next + jitter;
+
                             return std::make_pair(job.id, job);
                         }
                         catch (const std::exception& e)
@@ -788,7 +843,7 @@ private:
                 if (job.type == JobType::Cron)
                 {
                     auto calculated_next = job.next;
-                    int attempt{0};
+                    size_t attempt{0};
                     do
                     {
                         calculated_next =
@@ -796,7 +851,7 @@ private:
                         attempt++;
                     } while (calculated_next <=
                                  std::chrono::system_clock::now() &&
-                             attempt < 10);
+                             attempt < attempt_max);
 
                     job.next = calculated_next;
                     job_queue.emplace(job.id, calculated_next);
@@ -886,7 +941,7 @@ private:
                 if (!job.deleted)
                 {
                     auto calculated_next = job.next;
-                    int attempt{0};
+                    size_t attempt{0};
                     do
                     {
                         calculated_next =
@@ -894,7 +949,7 @@ private:
                         attempt++;
                     } while (calculated_next <=
                                  std::chrono::system_clock::now() &&
-                             attempt < 10);
+                             attempt < attempt_max);
 
                     job.next = calculated_next;
                     job_queue.emplace(job.id, calculated_next);
@@ -964,4 +1019,8 @@ private:
     std::thread consumer_worker;
     std::condition_variable consumer_cv;
     std::atomic<bool> consumer_running;
+
+    size_t jitter_max_ms{500};
+    size_t jitter_min_ms{0};
+    size_t attempt_max{10};
 };
