@@ -276,7 +276,7 @@ public:
 
                 for (auto& node : ready_nodes)
                 {
-                    process_job(node);
+                    thread_pool.submit([this, node]() { process_job(node); });
                 }
             }
         });
@@ -492,7 +492,7 @@ public:
         // 启动消费者
         consumer();
 
-        Job snapshot; 
+        Job snapshot;
 
         {
             std::lock_guard<std::mutex> lock(mutex);
@@ -501,19 +501,19 @@ public:
             if (it == job_map.end())
             {
                 throw std::runtime_error("Job ID " + std::to_string(job_id) +
-                                     " not found");
+                                         " not found");
             }
 
             if (snapshot.deleted)
             {
                 throw std::runtime_error("Job ID " + std::to_string(job_id) +
-                                     " is deleted"); 
+                                         " is deleted");
             }
 
             if (snapshot.type == JobType::Immediate)
             {
                 throw std::runtime_error("Job ID " + std::to_string(job_id) +
-                                     " is immediate");
+                                         " is immediate");
             }
 
             snapshot = it->second;
@@ -523,8 +523,8 @@ public:
             std::lock_guard<std::mutex> lock(consumer_mutex);
             consumer_queue.emplace(std::vector<Job>{snapshot});
         }
-        
-        consumer_cv.notify_one(); 
+
+        consumer_cv.notify_one();
     }
 
     void save_periodically()
@@ -535,7 +535,7 @@ public:
         }
 
         // 启动消费者
-        consumer(); 
+        consumer();
 
         std::vector<Job> snapshot;
         snapshot.reserve(job_map.size());
@@ -546,7 +546,7 @@ public:
             {
                 if (job.deleted || job.type == JobType::Immediate)
                 {
-                    continue; 
+                    continue;
                 }
                 snapshot.emplace_back(job);
             }
@@ -910,7 +910,7 @@ private:
     {
         if (consumer_running)
         {
-            return ;
+            return;
         }
 
         consumer_running = true;
@@ -925,8 +925,8 @@ private:
 
                     if (consumer_queue.empty())
                     {
-                        consumer_cv.wait(lock); 
-                        continue; 
+                        consumer_cv.wait(lock);
+                        continue;
                     }
 
                     snapshot = std::move(consumer_queue.front());
