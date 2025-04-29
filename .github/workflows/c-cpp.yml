@@ -22,12 +22,14 @@ jobs:
           cmake ../ 
           make 2> build_errors.log 
 
-      - name: Fix macOS Library Path (if needed)
+      - name: Patch macOS library path
         if: matrix.os == 'macos-latest'
         run: |
-          chmod +x bin/test_chronix || true
-          install_name_tool -add_rpath "${GITHUB_WORKSPACE}/lib/mysqlx_arm64" ${GITHUB_WORKSPACE}/bin/test_chronix || true
-
+          install_name_tool -change \
+            /opt/homebrew/opt/mysql-connector-c++/lib/libmysqlcppconnx.2.dylib \
+            @loader_path/../../lib/mysqlx_arm64/libmysqlcppconnx.2.dylib \
+            bin/test_chronix
+        
       - name: Run Tests
         run: |
           cd example/build
