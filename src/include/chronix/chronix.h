@@ -59,7 +59,8 @@ public:
 
         // 引入随机抖动，避免集中处理任务
         static thread_local std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        std::uniform_int_distribution<size_t> dist(jitter_min_ms,
+                                                   jitter_max_ms);
         auto jitter = std::chrono::milliseconds(dist(rng));
 
         auto safe_next_time = calculated_next + jitter;
@@ -104,7 +105,8 @@ public:
 
         // 引入随机抖动，避免集中处理任务
         static thread_local std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        std::uniform_int_distribution<size_t> dist(jitter_min_ms,
+                                                   jitter_max_ms);
         auto jitter = std::chrono::milliseconds(dist(rng));
 
         auto safe_next_time = run_at + jitter;
@@ -139,7 +141,8 @@ public:
 
         // 引入随机抖动，避免集中处理任务
         static thread_local std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        std::uniform_int_distribution<size_t> dist(jitter_min_ms,
+                                                   jitter_max_ms);
         auto jitter = std::chrono::milliseconds(dist(rng));
 
         auto earlier = std::chrono::system_clock::now() + jitter;
@@ -611,7 +614,8 @@ public:
 
         // 引入随机抖动 (0~4s)，避免集中处理任务
         static thread_local std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<size_t> dist(0, jitter_max_ms);
+        std::uniform_int_distribution<size_t> dist(jitter_min_ms,
+                                                   jitter_max_ms);
 
         for (size_t i = 0; i != jobs.size(); i++)
         {
