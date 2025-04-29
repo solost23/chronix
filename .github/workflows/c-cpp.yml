@@ -24,7 +24,7 @@ jobs:
 
       - name: Run Tests 
         run: |
-          export DYLD_LIBRARY_PATH=/Users/runner/work/chronix/chronix/lib/mysqlx_arm64:$DYLD_LIBRARY_PATH
+          echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/lib/mysqlx_arm64" >> $GITHUB_ENV
           cd example/build 
           ctest --output-on-failure > test_output.log 
         continue-on-error: true 
