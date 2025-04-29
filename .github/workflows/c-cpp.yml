@@ -42,7 +42,7 @@ jobs:
           # 设置 DYLD_LIBRARY_PATH 环境变量
           export DYLD_LIBRARY_PATH=${{ github.workspace }}/lib/mysqlx_arm64
           cd example/build
-          ctest --output-on-failure > test_output.log
+          ctest --verbose --output-on-failure > test_output.log
         continue-on-error: true
 
       - name: Report Summary
