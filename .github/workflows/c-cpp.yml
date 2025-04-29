@@ -29,13 +29,13 @@ jobs:
           install_name_tool -change \
             /opt/homebrew/opt/mysql-connector-c++/lib/libmysqlcppconnx.2.dylib \
             @executable_path/../../lib/mysqlx_arm64/libmysqlcppconnx.2.dylib \
-            example/build/test_chronix
+            bin/test_chronix
 
       # 验证库路径是否修改成功 (macOS)
       - name: Check Linked Libraries (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          otool -L example/build/test_chronix
+          otool -L bin/test_chronix
 
       - name: Run Tests
         run: |
