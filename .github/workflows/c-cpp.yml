@@ -18,7 +18,8 @@ jobs:
 
       - name: Build Project     
         run: |
-          ./example.sh
+          mkdir -p example/build && cd example/build
+          cmake ../ 
           make 2> build_errors.log 
 
       - name: Run Tests 
