@@ -238,8 +238,16 @@ public:
             throw std::runtime_error("Job ID " + std::to_string(job_id) +
                                      " not found");
         }
+        if (it->second.status == JobStatus::Running)
+        {
+            throw std::runtime_error(
+                "Cannot remove a job that is currently running (job_id = " +
+                std::to_string(job_id) + ")");
+        }
+
         // 延时删除任务
         it->second.deleted = true;
+        it->second.status = JobStatus::Pending;
     }
 
     // pause job
@@ -253,6 +261,13 @@ public:
             throw std::runtime_error("Job ID " + std::to_string(job_id) +
                                      " not found");
         }
+        if (it->second.status == JobStatus::Running)
+        {
+            throw std::runtime_error(
+                "Cannot pause a job that is currently running (job_id = " +
+                std::to_string(job_id) + ")");
+        }
+
         it->second.status = JobStatus::Paused;
     }
 
@@ -267,6 +282,18 @@ public:
             throw std::runtime_error("Job ID " + std::to_string(job_id) +
                                      " not found");
         }
+        if (it->second.deleted)
+        {
+            throw std::runtime_error(
+                "Cannot resume a job that has been deleted (job_id = " +
+                std::to_string(job_id) + ")");
+        }
+        if (it->second.status != JobStatus::Paused)
+        {
+            throw std::runtime_error("Can only resume a paused job (job_id = " +
+                                     std::to_string(job_id) + ")");
+        }
+
         it->second.status = JobStatus::Pending;
     }
 
