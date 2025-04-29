@@ -83,6 +83,12 @@ else()
     message(FATAL_ERROR "Unsupported architecture: ${ARCH}")
 endif()
 
+# 设置运行时路径（rpath）防止运行时报错找不到动态库
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  INSTALL_RPATH "${MYSQLX_LIB_DIR}"
+  BUILD_WITH_INSTALL_RPATH TRUE
+)
+
 find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${MYSQLX_LIB_DIR})
 if (mysqlcppconnxLIBRARY)
     message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
@@ -92,19 +98,17 @@ else()
 endif()
 
 # tests
+enable_testing()
 set (TEST_PROJECT_NAME test_chronix)
 
-enable_testing()
-
 add_executable(${TEST_PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chronix.cpp)
+target_link_libraries(${TEST_PROJECT_NAME} ${MYSQLCPP_LIB})
 
-find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${MYSQLX_LIB_DIR})
-if (mysqlcppconnxLIBRARY)
-    message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
-    target_link_libraries(${TEST_PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
-else()
-    message(FATAL_ERROR "Could not find mysqlcppconnx library")
-endif()
+# 设置测试程序的运行路径
+set_target_properties(${TEST_PROJECT_NAME} PROPERTIES
+  INSTALL_RPATH "${MYSQLX_LIB_DIR}"
+  BUILD_WITH_INSTALL_RPATH TRUE
+)
 
 add_test(NAME ChronixTests COMMAND ${TEST_PROJECT_NAME})
 
