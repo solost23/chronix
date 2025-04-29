@@ -91,4 +91,21 @@ else()
     message(FATAL_ERROR "Could not find mysqlcppconnx library")
 endif()
 
+# tests
+set (TEST_PROJECT_NAME test_chronix)
+
+enable_testing()
+
+add_executable(${TEST_PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chronix.cpp)
+
+find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${MYSQLX_LIB_DIR})
+if (mysqlcppconnxLIBRARY)
+    message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
+    target_link_libraries(${TEST_PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
+else()
+    message(FATAL_ERROR "Could not find mysqlcppconnx library")
+endif()
+
+add_test(NAME ChronixTests COMMAND ${TEST_PROJECT_NAME})
+
 # 下面可设置安装相关
