@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: C++ Task Scheduler CI/CD
 
 on:
   push:
@@ -16,13 +16,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4  
 
-      - name: Build     
+      - name: Build Project     
         run: |
           ./example.sh
+          make 2> build_errors.log 
 
-      - name: Report
+      - name: Run Tests 
         run: |
           cd example/build 
-          make 2> build_errors.log
-          echo "## Build Log" >> $GITHUB_STEP_SUMMARY
-          cat build_errors.log >> $GITHUB_STEP_SUMMARY
+          ctest --output-on-failure > test_output.log 
+        continue-on-error: true 
+
+      - name: Report Summary
+        run: |
+          echo "## 🛠️ Build Log" >> $GITHUB_STEP_SUMMARY
+          cat example/build/build_errors.log >> $GITHUB_STEP_SUMMARY
+
+          echo "## ✅ Test Output" >> $GITHUB_STEP_SUMMARY
+          cat example/build/test_output.log >> $GITHUB_STEP_SUMMARY
