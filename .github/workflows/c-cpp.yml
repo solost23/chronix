@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          # 安装 zlib
+          brew install zlib
+
       - name: Build Project
         run: |
           mkdir -p example/build && cd example/build
