@@ -16,33 +16,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          # 安装 zlib
+          brew install zlib
+          
       - name: Build Project
         run: |
           mkdir -p example/build && cd example/build
-          cmake ../ 
-          make 2> build_errors.log 
+          cmake ../
+          make 2> build_errors.log
 
-      # 修复 macOS 上的库路径问题
-      - name: Patch macOS library path
+      - name: Patch macOS library paths (MySQL and zlib)
         if: matrix.os == 'macos-latest'
         run: |
+          # 修改 MySQL 连接器的路径
           install_name_tool -change \
             /opt/homebrew/opt/mysql-connector-c++/lib/libmysqlcppconnx.2.dylib \
-            @executable_path/../../lib/mysqlx_arm64/libmysqlcppconnx.2.dylib \
+            @loader_path/../../lib/mysqlx_arm64/libmysqlcppconnx.2.dylib \
+            bin/test_chronix
+          
+          # 设置 zlib 的路径
+          install_name_tool -change \
+            /opt/homebrew/opt/zlib/lib/libz.1.dylib \
+            @loader_path/../../lib/mysqlx_arm64/libz.1.dylib \
             bin/test_chronix
 
-      # 验证库路径是否修改成功 (macOS)
-      - name: Check Linked Libraries (macOS)
+      - name: Set DYLD_LIBRARY_PATH for zlib
         if: matrix.os == 'macos-latest'
         run: |
-          otool -L bin/test_chronix
+          # 设置 zlib 和 MySQL 连接器库的路径
+          export DYLD_LIBRARY_PATH=/opt/homebrew/opt/zlib/lib:$DYLD_LIBRARY_PATH
+          export DYLD_LIBRARY_PATH=${{ github.workspace }}/lib/mysqlx_arm64:$DYLD_LIBRARY_PATH
+          cd example/build
+          ctest --output-on-failure --verbose > test_output.log
 
       - name: Run Tests
         run: |
-          # 设置 DYLD_LIBRARY_PATH 环境变量
-          export DYLD_LIBRARY_PATH=${{ github.workspace }}/lib/mysqlx_arm64
           cd example/build
-          ctest --verbose --output-on-failure > test_output.log
+          ctest --output-on-failure > test_output.log
         continue-on-error: true
 
       - name: Report Summary
