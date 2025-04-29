@@ -33,9 +33,6 @@ jobs:
       - name: Run Tests
         run: |
           cd example/build
-          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            export DYLD_LIBRARY_PATH="${GITHUB_WORKSPACE}/lib/mysqlx_arm64"
-          fi
           ctest --output-on-failure > test_output.log
         continue-on-error: true
 
