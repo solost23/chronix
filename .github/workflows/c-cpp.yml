@@ -14,20 +14,28 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4  
+      - uses: actions/checkout@v4
 
-      - name: Build Project     
+      - name: Build Project
         run: |
           mkdir -p example/build && cd example/build
           cmake ../ 
           make 2> build_errors.log 
 
-      - name: Run Tests 
+      - name: Fix macOS Library Path (if needed)
+        if: matrix.os == 'macos-latest'
         run: |
-          echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/lib/mysqlx_arm64" >> $GITHUB_ENV
-          cd example/build 
-          ctest --output-on-failure > test_output.log 
-        continue-on-error: true 
+          chmod +x bin/test_chronix || true
+          install_name_tool -add_rpath "${GITHUB_WORKSPACE}/lib/mysqlx_arm64" ${GITHUB_WORKSPACE}/bin/test_chronix || true
+
+      - name: Run Tests
+        run: |
+          cd example/build
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            export DYLD_LIBRARY_PATH="${GITHUB_WORKSPACE}/lib/mysqlx_arm64"
+          fi
+          ctest --output-on-failure > test_output.log
+        continue-on-error: true
 
       - name: Report Summary
         run: |
