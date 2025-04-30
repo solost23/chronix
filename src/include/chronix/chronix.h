@@ -247,7 +247,6 @@ public:
 
         // 延时删除任务
         it->second.deleted = true;
-        it->second.status = JobStatus::Pending;
     }
 
     // pause job
