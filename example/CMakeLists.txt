@@ -91,6 +91,30 @@ else()
     message(FATAL_ERROR "Could not find mysqlcppconnx library")
 endif()
 
+# ========= Chronix C API 动态库构建 ==========
+set(CHRONIX_API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../api)
+
+file(GLOB_RECURSE CHRONIX_API_SOURCES
+    ${CHRONIX_API_DIR}/src/chronix_c_api.cpp 
+)
+
+add_library(chronix SHARED ${CHRONIX_API_SOURCES})
+
+set_target_properties(chronix PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CHRONIX_API_DIR}/lib
+    OUTPUT_NAME "chronix"
+)
+
+target_include_directories(chronix PRIVATE
+    ${SOURCE_CODE_DIR}/include
+    ${CHRONIX_API_DIR}/include
+)
+
+target_link_libraries(chronix ${mysqlcppconnxLIBRARY})
+
+install(FILES ${CHRONIX_API_DIR}/include/chronix_c_api.h
+        DESTINATION ${CHRONIX_API_DIR}/include)
+
 # tests
 enable_testing()
 set (TEST_PROJECT_NAME test_chronix)

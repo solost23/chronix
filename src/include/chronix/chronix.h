@@ -840,7 +840,7 @@ public:
     }
 
     // get running
-    size_t get_running() const
+    bool get_running() const
     {
         return running;
     }
