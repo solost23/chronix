@@ -17,9 +17,9 @@
 
 # # 添加可执行文件
 # add_executable(main ${CMAKE_SOURCE_DIR}/main.cpp)
-set(PROJECT_NAME example)
+set(PROJECT_NAME server)
 set(VERSION_NUMBER "1.0.0" CACHE STRING "Version")
-set(CHRONIX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(CHRONIX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -48,16 +48,7 @@ INCLUDE_DIRECTORIES(
 )
 
 file(GLOB_RECURSE SELF_PROJECT_SOURCE_FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/example.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example2.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example3.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example4.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example5.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example6.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example7.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example8.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/example9.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
 
 execute_process(
@@ -91,20 +82,20 @@ else()
     message(FATAL_ERROR "Could not find mysqlcppconnx library")
 endif()
 
-# tests
-enable_testing()
-set (TEST_PROJECT_NAME test_chronix)
+# # tests
+# enable_testing()
+# set (TEST_PROJECT_NAME test_chronix)
 
-add_executable(${TEST_PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chronix.cpp)
+# add_executable(${TEST_PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chronix.cpp)
 
-find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${MYSQLX_LIB_DIR})
-if (mysqlcppconnxLIBRARY)
-    message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
-    target_link_libraries(${TEST_PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
-else()
-    message(FATAL_ERROR "Could not find mysqlcppconnx library")
-endif()
+# find_library(mysqlcppconnxLIBRARY mysqlcppconnx HINTS ${MYSQLX_LIB_DIR})
+# if (mysqlcppconnxLIBRARY)
+#     message(STATUS "Found mysqlcppconnx library: ${mysqlcppconnxLIBRARY}")
+#     target_link_libraries(${TEST_PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
+# else()
+#     message(FATAL_ERROR "Could not find mysqlcppconnx library")
+# endif()
 
-add_test(NAME ChronixTests COMMAND ${TEST_PROJECT_NAME})
+# add_test(NAME ChronixTests COMMAND ${TEST_PROJECT_NAME})
 
 # 下面可设置安装相关

@@ -14,7 +14,7 @@
 
 #include "chronix/croncpp.h"
 #include "chronix/define.h"
-#include "chronix/persistence/persistence.h"
+#include "persistence/persistence.h"
 #include "chronix/thread_pool/thread_pool.h"
 
 class ChronixScheduler
