@@ -1,0 +1,9 @@
+name: "chronix-web"
+mode: "debug"
+port: 6090
+time_location: "Asia/Shanghai"
+
+chronix:
+  thread_pool:
+    min_threads: 4
+    max_threads: 16
