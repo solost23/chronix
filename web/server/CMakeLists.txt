@@ -51,6 +51,9 @@ file(GLOB_RECURSE SELF_PROJECT_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/routers/main.cpp 
   ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/server.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/config.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/config.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/main.cpp 
 )
 
 execute_process(
@@ -70,8 +73,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 if (${ARCH} STREQUAL "x86_64")
     set(MYSQLX_LIB_DIR "${CHRONIX_ROOT_DIR}/lib/mysqlx_x86_64")
+    set(YAML_CPP_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/yaml-cpp_arm64")
 elseif (${ARCH} STREQUAL "arm64" OR ${ARCH} STREQUAL "aarch64")
     set(MYSQLX_LIB_DIR "${CHRONIX_ROOT_DIR}/lib/mysqlx_arm64")
+    set(YAML_CPP_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/yaml-cpp_x86_64")
 else()
     message(FATAL_ERROR "Unsupported architecture: ${ARCH}")
 endif()
@@ -82,6 +87,14 @@ if (mysqlcppconnxLIBRARY)
     target_link_libraries(${PROJECT_NAME} ${mysqlcppconnxLIBRARY} ${SELF_INPUT_LIBRARIES})
 else()
     message(FATAL_ERROR "Could not find mysqlcppconnx library")
+endif()
+
+find_library(yaml-cppLIBRARY yaml-cpp HINTS ${YAML_CPP_LIB_DIR})
+if (yaml-cppLIBRARY)
+    message(STATUS "Found yaml-cpp library: ${yaml-cppLIBRARY}")
+    target_link_libraries(${PROJECT_NAME} ${yaml-cppLIBRARY} ${SELF_INPUT_LIBRARIES})
+else()
+    message(FATAL_ERROR "Could not find yaml-cpp library")
 endif()
 
 # # tests

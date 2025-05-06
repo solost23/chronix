@@ -8,13 +8,19 @@
 class ServerConfig
 {
 public:
-    ServerConfig(const std::string& filepath){};
+    ServerConfig(const std::string& filepath);
+
+    std::string get_name() const;
+    std::string get_mode() const;
+    int get_port() const;
+    size_t get_min_threads() const;
+    size_t get_max_threads() const;
 
 private:
     struct ChronixThreadPoolConfig
     {
-        int min_threads;
-        int max_threads;
+        size_t min_threads;
+        size_t max_threads;
     };
 
     struct ChronixConfig
