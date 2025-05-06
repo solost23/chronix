@@ -1,5 +1,6 @@
 #include "global/initialize/main.h"
 
+#include "global/initialize/chronix.h"
 #include "global/initialize/config.h"
 
 void initialize(const std::string& filepath)

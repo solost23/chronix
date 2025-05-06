@@ -54,6 +54,7 @@ file(GLOB_RECURSE SELF_PROJECT_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/config/config.cpp 
   ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/config.cpp 
   ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/main.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/chronix.cpp 
 )
 
 execute_process(

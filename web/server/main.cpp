@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         std::cerr << e.what() << '\n';
     }
 
-    std::cout << server_config.get_name() << std::endl;
+    // std::cout << server_config.get_name() << std::endl;
 
     // 启动服务
     Run(Register);
