@@ -14,18 +14,28 @@
 
 #include "chronix/croncpp.h"
 #include "chronix/define.h"
-#include "persistence/persistence.h"
+#include "chronix/persistence/persistence.h"
 #include "chronix/thread_pool/thread_pool.h"
 
 class ChronixScheduler
 {
 public:
-    ChronixScheduler(size_t thread_count = std::thread::hardware_concurrency())
-        : running(false),
-          next_job_id(1),
-          thread_pool(thread_count),
-          metrics_enabled(false)
-    {}
+    ChronixScheduler(size_t min_threads = 1,
+                     size_t max_threads = 8 *
+                                          std::thread::hardware_concurrency())
+        : running(false), next_job_id(1), metrics_enabled(false)
+    {
+        try
+        {
+            thread_pool =
+                std::make_unique<ThreadPool>(min_threads, max_threads);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                std::string("Failed to create thread pool: ") + e.what());
+        }
+    }
 
     ~ChronixScheduler()
     {
@@ -340,7 +350,7 @@ public:
 
                 for (auto& node : ready_nodes)
                 {
-                    thread_pool.submit([this, node]() { process_job(node); });
+                    thread_pool->submit([this, node]() { process_job(node); });
                 }
             }
         });
@@ -988,7 +998,7 @@ private:
             }
         };
 
-        thread_pool.submit(wrapped_task);
+        thread_pool->submit(wrapped_task);
     }
 
     void consumer()
@@ -1034,7 +1044,7 @@ private:
     std::atomic<size_t> next_job_id;
     std::mutex mutex;
 
-    ThreadPool thread_pool;
+    std::unique_ptr<ThreadPool> thread_pool;
 
     std::shared_ptr<Persistence<Job>> persistence;
 

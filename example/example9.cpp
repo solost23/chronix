@@ -22,7 +22,7 @@ static const std::vector<std::function<void()>> jobs{
 
 void example9()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     try
     {

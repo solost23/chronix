@@ -29,7 +29,7 @@ static const auto success_callback = [](size_t job_id) {
 
 void example6()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     scheduler->set_persistence(std::make_shared<DBPersistenceMySQL<Job>>(
         "localhost", 33036, "root", "123", "chronix"));
@@ -71,7 +71,6 @@ void example6()
         // 任务暂停
         scheduler->pause_job(3);
 
-
         // 定时持久化
         size_t count{0};
         while (count != 11)
@@ -79,7 +78,7 @@ void example6()
             scheduler->save_periodically();
             std::this_thread::sleep_for(std::chrono::seconds(3));
         }
-        
+
         // 加载
         scheduler->load_state();
     }

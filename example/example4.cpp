@@ -30,7 +30,7 @@ static const auto success_callback = [](size_t job_id) {
 
 void example4()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     try
     {

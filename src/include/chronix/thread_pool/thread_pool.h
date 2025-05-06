@@ -14,34 +14,22 @@ class ThreadPool
 {
 public:
     explicit ThreadPool(
-        size_t thread_count = std::thread::hardware_concurrency())
-        : stop_flag(false)
+        size_t min_threads = 1,
+        size_t max_threads = 8 * std::thread::hardware_concurrency())
+        : stop_flag(false), min_threads(min_threads), max_threads(max_threads)
     {
-        for (size_t i = 0; i != thread_count; i++)
+        if (min_threads == 0)
         {
-            workers.emplace_back([this]() {
-                for (;;)
-                {
-                    Task task;
+            throw std::runtime_error("min_threads == 0");
+        }
+        if (min_threads > max_threads)
+        {
+            throw std::runtime_error("min_threads > max_threads");
+        }
 
-                    {
-                        std::unique_lock<std::mutex> lock(queue_mutex);
-                        condition.wait(lock, [this]() {
-                            return stop_flag || !tasks.empty();
-                        });
-
-                        if (stop_flag && tasks.empty())
-                        {
-                            return;
-                        }
-
-                        task = std::move(tasks.front());
-                        tasks.pop();
-                    }
-
-                    task();
-                }
-            });
+        for (size_t i = 0; i != min_threads; i++)
+        {
+            workers.emplace_back(&ThreadPool::worker_thread, this);
         }
     }
 
@@ -95,10 +83,51 @@ public:
 private:
     using Task = std::function<void()>;
 
+    void worker_thread()
+    {
+        while (true)
+        {
+            Task task;
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                idle_threads++;
+
+                if (!condition.wait_for(
+                        lock, std::chrono::seconds(10),
+                        [this]() { return stop_flag || !tasks.empty(); }))
+                {
+                    idle_threads--;
+                    if (workers.size() > min_threads)
+                    {
+                        return;
+                    }
+
+                    continue;
+                }
+
+                idle_threads--;
+
+                if (stop_flag && tasks.empty())
+                {
+                    return;
+                }
+
+                task = std::move(tasks.front());
+                tasks.pop();
+            }
+
+            task();
+        }
+    }
+
     std::vector<std::thread> workers;
     std::queue<Task> tasks;
 
     std::mutex queue_mutex;
     std::condition_variable condition;
+
     std::atomic<bool> stop_flag;
+    std::atomic<size_t> idle_threads{0};
+    const size_t min_threads;
+    const size_t max_threads;
 };

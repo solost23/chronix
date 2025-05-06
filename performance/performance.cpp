@@ -8,7 +8,8 @@
 #include "chronix/chronix.h"
 #include "chronix/define.h"
 
-static const int THREAD_COUNT = std::thread::hardware_concurrency() * 8;
+static const size_t MIN_THREADS = std::thread::hardware_concurrency() * 8;
+static const size_t MAX_THREADS = std::thread::hardware_concurrency() * 8;
 
 static const size_t ROUNDS = 10;
 static const size_t JOB_STEP = 10000;
@@ -38,7 +39,8 @@ int main(int argc, char* argv[])
     std::ofstream out(filename);
     out << header << "\r\n";
 
-    auto scheduler = std::make_shared<ChronixScheduler>(THREAD_COUNT);
+    auto scheduler =
+        std::make_shared<ChronixScheduler>(MIN_THREADS, MAX_THREADS);
     scheduler->set_metrics_enabled(true);
 
     try

@@ -55,8 +55,8 @@ Chronix is a lightweight, high-performance C++ task scheduler that supports Cron
 ### 1. Initialize the Scheduler
 
 ```cpp
-// Initialize with a specified thread pool size (e.g., 4 worker threads)
-auto scheduler = std::make_shared<ChronixScheduler>(4);
+// Initialize with a specified thread pool size (e.g., min 1 worker threads, max 4 worker threads)
+auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 ```
 
 ### 2. Add a Scheduled Job

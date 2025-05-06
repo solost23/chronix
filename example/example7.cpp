@@ -20,7 +20,7 @@ static const std::vector<
 
 void example7()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     try
     {

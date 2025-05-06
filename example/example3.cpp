@@ -17,7 +17,7 @@ static const std::vector<std::pair<std::string, std::function<void()>>> jobs{
 
 void example3()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     try
     {

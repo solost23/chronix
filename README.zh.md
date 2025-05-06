@@ -55,8 +55,8 @@
 ### 1. 初始化调度器
 
 ```cpp
-// 初始化时指定线程池大小（例如 4 个工作线程）
-auto scheduler = std::make_shared<ChronixScheduler>(4);
+// 初始化时指定线程池大小（例如 最小1个工作线程，最大4个工作线程）
+auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 ```
 
 ### 2. 添加定时任务

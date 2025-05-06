@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 
 void test_immediate_job()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     bool run{false};
     try
@@ -52,7 +52,7 @@ void test_immediate_job()
 
 void test_once_job()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     bool run{false};
     try
@@ -77,7 +77,7 @@ void test_once_job()
 
 void test_cron_job()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     std::atomic<size_t> run_count{0};
 
@@ -100,7 +100,7 @@ void test_cron_job()
 
 void test_delete_job()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     bool run{false};
 
@@ -127,7 +127,7 @@ void test_delete_job()
 
 void test_pause_resume_cron_job()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     std::atomic<size_t> run_count{0};
 
@@ -161,7 +161,7 @@ void test_pause_resume_cron_job()
 
 void test_delete_running_job_should_throw()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     bool run{false};
 
@@ -190,7 +190,7 @@ void test_delete_running_job_should_throw()
 
 void test_pause_running_job_should_throw()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     bool run{false};
 

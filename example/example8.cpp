@@ -31,7 +31,7 @@ static const auto format_time = [](std::chrono::system_clock::time_point tp) {
 
 void example8()
 {
-    auto scheduler = std::make_shared<ChronixScheduler>(4);
+    auto scheduler = std::make_shared<ChronixScheduler>(1, 4);
 
     scheduler->set_metrics_enabled(true);
 
