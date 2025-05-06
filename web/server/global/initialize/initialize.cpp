@@ -35,6 +35,7 @@ std::shared_ptr<ServerConfig> Initialize::init_config(const std::string& filepat
     {
         std::runtime_error(std::string("init_config failed") + e.what());
     }
+    return nullptr; 
 }
 
 std::shared_ptr<ChronixScheduler> Initialize::init_chronix(const std::shared_ptr<ServerConfig>& server_config)
@@ -52,4 +53,5 @@ std::shared_ptr<ChronixScheduler> Initialize::init_chronix(const std::shared_ptr
         std::runtime_error(std::string("Error initializing Chronix: ") +
                         e.what());
     }
+    return nullptr; 
 }

@@ -49,10 +49,11 @@ INCLUDE_DIRECTORIES(
 
 file(GLOB_RECURSE SELF_PROJECT_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/router/router.cpp 
-  ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/server.cpp 
-  ${CMAKE_CURRENT_SOURCE_DIR}/config/config.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/initialize.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/config.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/global/initialize/server.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/router/router.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/controller/controller.cpp  
 )
 
 execute_process(
