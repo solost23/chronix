@@ -9,7 +9,6 @@ ServerConfig::ServerConfig(const std::string& filepath)
     }
 
     YAML::Node node = YAML::Load(fp);
-
     try
     {
         name = node["name"].as<std::string>();
@@ -17,9 +16,9 @@ ServerConfig::ServerConfig(const std::string& filepath)
         port = node["port"].as<int>();
         time_location = node["time_location"].as<std::string>();
         chronix_config.thread_pool_config.min_threads =
-            node["thread_pool_config"]["min_threads"].as<size_t>();
+            node["chronix"]["thread_pool"]["min_threads"].as<size_t>();
         chronix_config.thread_pool_config.max_threads =
-            node["thread_pool_config"]["max_threads"].as<size_t>();
+            node["chronix"]["thread_pool"]["max_threads"].as<size_t>();
     }
     catch (const YAML::Exception& e)
     {
