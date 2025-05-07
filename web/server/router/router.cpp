@@ -29,6 +29,29 @@ std::unique_ptr<httplib::Server> Register(
             [controller](const httplib::Request& req, httplib::Response& resp) {
                 controller->insert_immediate_task(req, resp);
             });
+
+        server->Post(
+            SET_START_CALLBACK,
+            [controller](const httplib::Request& req, httplib::Response& resp) {
+                controller->set_start_callback(req, resp);
+            });
+
+        server->Post(
+            SET_SUCCESS_CALLBACK,
+            [controller](const httplib::Request& req, httplib::Response& resp) {
+                controller->set_success_callback(req, resp);
+            });
+
+        server->Post(
+            SET_ERROR_CALLBACK,
+            [controller](const httplib::Request& req, httplib::Response& resp) {
+                controller->set_error_callback(req, resp);
+            });
+
+        server->Post(SET_END_CALLBACK, [controller](const httplib::Request& req,
+                                                    httplib::Response& resp) {
+            controller->set_end_callback(req, resp);
+        });
     }
 
     return server;

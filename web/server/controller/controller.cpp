@@ -10,12 +10,14 @@ void Controller::insert_cron_task(const httplib::Request& req,
 
         auto scheduler = get_initialize()->get_scheduler();
         size_t id = scheduler->add_cron_job(params.cron, [params]() {
-            httplib::Client client(force_http(params.callback_url));
+            auto [host, path] =
+                extract_host_and_path(force_http(params.callback_url));
+            httplib::Client client(host);
 
             client.set_connection_timeout(5);
             client.set_read_timeout(10);
 
-            auto result = client.Get(params.callback_url);
+            auto result = client.Get(path);
             std::cout << "Callback result: " << result->status << std::endl;
             if (result && result->status == 200)
             {
@@ -52,12 +54,15 @@ void Controller::insert_once_task(const httplib::Request& req,
         auto scheduler = get_initialize()->get_scheduler();
 
         size_t id = scheduler->add_once_job(tp, [params]() {
-            httplib::Client client(force_http(params.callback_url));
+            auto [host, path] =
+                extract_host_and_path(force_http(params.callback_url));
+
+            httplib::Client client(host);
 
             client.set_connection_timeout(5);
             client.set_read_timeout(10);
 
-            auto result = client.Get(params.callback_url);
+            auto result = client.Get(path);
             std::cout << "Callback result: " << result->status << std::endl;
             if (result && result->status == 200)
             {
@@ -90,12 +95,15 @@ void Controller::insert_immediate_task(const httplib::Request& req,
 
         auto scheduler = get_initialize()->get_scheduler();
         size_t id = scheduler->add_immediate_job([params]() {
-            httplib::Client client(force_http(params.callback_url));
+            auto [host, path] =
+                extract_host_and_path(force_http(params.callback_url));
+
+            httplib::Client client(host);
 
             client.set_connection_timeout(5);
             client.set_read_timeout(10);
 
-            auto result = client.Get(params.callback_url);
+            auto result = client.Get(path);
             std::cout << "Callback result: " << result->status << std::endl;
             if (result && result->status == 200)
             {
@@ -112,6 +120,195 @@ void Controller::insert_immediate_task(const httplib::Request& req,
         });
 
         success(resp, id);
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::set_start_callback(const httplib::Request& req,
+                                    httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        SetCallbackForm params = j.get<SetCallbackForm>();
+
+        std::string separator =
+            (params.callback_url.find('?') == std::string::npos) ? "?" : "&";
+        params.callback_url = force_http(params.callback_url) + separator +
+                              "id=" + std::to_string(params.id);
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->set_start_callback(params.id, [params](size_t id) {
+            auto [host, path] =
+                extract_host_and_path(force_http(params.callback_url));
+
+            httplib::Client client(host);
+
+            client.set_connection_timeout(5);
+            client.set_read_timeout(10);
+
+            auto result = client.Get(path);
+            std::cout << "Callback result: " << result->status << std::endl;
+            if (result && result->status == 200)
+            {
+                std::clog << "[Info] success send callback to "
+                          << params.callback_url << std::endl;
+            }
+            else
+            {
+                std::clog << "[Info] failed send callback to "
+                          << params.callback_url << std::endl;
+                std::clog << "[Info] callback response: " << result->body
+                          << std::endl;
+            }
+        });
+
+        success(resp, "");
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::set_success_callback(const httplib::Request& req,
+                                      httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        SetCallbackForm params = j.get<SetCallbackForm>();
+
+        std::string separator =
+            (params.callback_url.find('?') == std::string::npos) ? "?" : "&";
+        params.callback_url = force_http(params.callback_url) + separator +
+                              "id=" + std::to_string(params.id);
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->set_success_callback(params.id, [params](size_t id) {
+            auto [host, path] =
+                extract_host_and_path(force_http(params.callback_url));
+
+            httplib::Client client(host);
+
+            client.set_connection_timeout(5);
+            client.set_read_timeout(10);
+
+            auto result = client.Get(path);
+            std::cout << "Callback result: " << result->status << std::endl;
+            if (result && result->status == 200)
+            {
+                std::clog << "[Info] success send callback to "
+                          << params.callback_url << std::endl;
+            }
+            else
+            {
+                std::clog << "[Info] failed send callback to "
+                          << params.callback_url << std::endl;
+                std::clog << "[Info] callback response: " << result->body
+                          << std::endl;
+            }
+        });
+        success(resp, "");
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, 500, e);
+    }
+}
+
+void Controller::set_error_callback(const httplib::Request& req,
+                                    httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        SetCallbackForm params = j.get<SetCallbackForm>();
+
+        std::string separator =
+            (params.callback_url.find('?') == std::string::npos) ? "?" : "&";
+        params.callback_url = force_http(params.callback_url) + separator +
+                              "id=" + std::to_string(params.id);
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->set_error_callback(
+            params.id, [params](size_t id, const std::exception& e) {
+                auto [host, path] =
+                    extract_host_and_path(force_http(params.callback_url));
+                httplib::Client client(host);
+
+                client.set_connection_timeout(5);
+                client.set_read_timeout(10);
+
+                auto result = client.Get(path);
+                std::cout << "Callback result: " << result->status << std::endl;
+                if (result && result->status == 200)
+                {
+                    std::clog << "[Info] success send callback to "
+                              << params.callback_url << std::endl;
+                }
+                else
+                {
+                    std::clog << "[Info] failed send callback to "
+                              << params.callback_url << std::endl;
+                    std::clog << "[Info] callback response: " << result->body
+                              << std::endl;
+                }
+            });
+        success(resp, "");
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::set_end_callback(const httplib::Request& req,
+                                  httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        SetCallbackForm params = j.get<SetCallbackForm>();
+
+        std::string separator =
+            (params.callback_url.find('?') == std::string::npos) ? "?" : "&";
+        params.callback_url = force_http(params.callback_url) + separator +
+                              "id=" + std::to_string(params.id);
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->set_end_callback(params.id, [params](size_t id) {
+            auto [host, path] =
+                extract_host_and_path(force_http(params.callback_url));
+
+            httplib::Client client(host);
+
+            client.set_connection_timeout(5);
+            client.set_read_timeout(10);
+
+            auto result = client.Get(path);
+            std::cout << "Callback result: " << result->status << std::endl;
+            if (result && result->status == 200)
+            {
+                std::clog << "[Info] success send callback to "
+                          << params.callback_url << std::endl;
+            }
+            else
+            {
+                std::clog << "[Info] failed send callback to "
+                          << params.callback_url << std::endl;
+                std::clog << "[Info] callback response: " << result->body
+                          << std::endl;
+            }
+        });
+        success(resp, "");
     }
     catch (const std::exception& e)
     {
