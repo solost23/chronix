@@ -27,6 +27,18 @@ public:
     void set_error_callback(const httplib::Request& req,
                             httplib::Response& resp);
     void set_end_callback(const httplib::Request& req, httplib::Response& resp);
+    void set_metrics_enabled(const httplib::Request& req,
+                             httplib::Response& resp);
+    void remove_job(const httplib::Request& req, httplib::Response& resp);
+    void pause_job(const httplib::Request& req, httplib::Response& resp);
+    void resume_job(const httplib::Request& req, httplib::Response& resp);
+    void get_job_status(const httplib::Request& req, httplib::Response& resp);
+    void get_job_result(const httplib::Request& req, httplib::Response& resp);
+    void get_job_metrics(const httplib::Request& req, httplib::Response& resp);
+    void get_job_count(const httplib::Request& req, httplib::Response& resp);
+    void get_running_job_count(const httplib::Request& req,
+                               httplib::Response& resp);
+    void get_running(const httplib::Request& req, httplib::Response& resp);
 
 private:
     const std::shared_ptr<Initialize> get_initialize();

@@ -316,6 +316,164 @@ void Controller::set_end_callback(const httplib::Request& req,
     }
 }
 
+void Controller::set_metrics_enabled(const httplib::Request& req,
+                                     httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        SetMetricsEnabledForm params = j.get<SetMetricsEnabledForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->set_metrics_enabled(params.enabled);
+        success(resp, params.enabled);
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::remove_job(const httplib::Request& req,
+                            httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        IDForm params = j.get<IDForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->remove_job(params.id);
+        success(resp, "");
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::pause_job(const httplib::Request& req, httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        IDForm params = j.get<IDForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->pause_job(params.id);
+        success(resp, "");
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::resume_job(const httplib::Request& req,
+                            httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        IDForm params = j.get<IDForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        scheduler->resume_job(params.id);
+        success(resp, "");
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::get_job_status(const httplib::Request& req,
+                                httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        IDForm params = j.get<IDForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        auto status = scheduler->get_job_status(params.id);
+        success(resp, scheduler->status_to_string(status));
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::get_job_result(const httplib::Request& req,
+                                httplib::Response& resp)
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        IDForm params = j.get<IDForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        auto result = scheduler->get_job_result(params.id);
+        success(resp, scheduler->result_to_string(result));
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::get_job_metrics(const httplib::Request& req,
+                                 httplib::Response& resp)
+{}
+
+void Controller::get_job_count(const httplib::Request& req,
+                               httplib::Response& resp)
+{
+    try
+    {
+        auto scheduler = get_initialize()->get_scheduler();
+        success(resp, scheduler->get_job_count());
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::get_running_job_count(const httplib::Request& req,
+                                       httplib::Response& resp)
+{
+    try
+    {
+        auto scheduler = get_initialize()->get_scheduler();
+        success(resp, scheduler->get_running_job_count());
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
+void Controller::get_running(const httplib::Request&, httplib::Response& resp)
+{
+    try
+    {
+        auto scheduler = get_initialize()->get_scheduler();
+        success(resp, scheduler->get_running());
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
+
 const std::shared_ptr<Initialize> Controller::get_initialize()
 {
     return initialize;

@@ -54,6 +54,26 @@ inline void from_json(const nlohmann::json& j, SetCallbackForm& params)
     j.at("callback_url").get_to(params.callback_url);
 }
 
+struct SetMetricsEnabledForm
+{
+    bool enabled;
+};
+
+inline void from_json(const nlohmann::json& j, SetMetricsEnabledForm& params)
+{
+    j.at("enabled").get_to(params.enabled);
+}
+
+struct IDForm
+{
+    size_t id;
+};
+
+inline void from_json(const nlohmann::json& j, IDForm& params)
+{
+    j.at("id").get_to(params.id);
+}
+
 inline std::chrono::system_clock::time_point parse_iso_time(
     const std::string& iso_time)
 {
