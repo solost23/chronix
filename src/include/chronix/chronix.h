@@ -772,6 +772,7 @@ public:
         case JobStatus::Paused:
             return "Paused";
         }
+        return "Unknown";
     }
 
     // get job last result
@@ -800,6 +801,7 @@ public:
         case JobResult::Unknown:
             return "Unknown";
         }
+        return "Unknown";
     }
 
     // get job metrics

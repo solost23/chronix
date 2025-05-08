@@ -431,7 +431,51 @@ void Controller::get_job_result(const httplib::Request& req,
 
 void Controller::get_job_metrics(const httplib::Request& req,
                                  httplib::Response& resp)
-{}
+{
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(req.body);
+        IDForm params = j.get<IDForm>();
+
+        auto scheduler = get_initialize()->get_scheduler();
+
+        auto metrics = scheduler->get_job_metrics(params.id);
+
+        Metrics result;
+        {
+            result.execution_count = metrics.execution_count;
+            result.success_count = metrics.success_count;
+            result.error_count = metrics.error_count;
+
+            result.last_run_time = to_iso_time(metrics.last_run_time);
+            result.last_duration = metrics.last_duration.count();
+            result.total_duration = metrics.total_duration.count();
+            result.max_duration = metrics.max_duration.count();
+            result.min_duration = metrics.min_duration.count();
+
+            for (auto& success_time : metrics.success_times)
+            {
+                result.success_times.push_back(to_iso_time(success_time));
+            }
+            for (auto& error_time : metrics.error_times)
+            {
+                result.error_times.push_back(to_iso_time(error_time));
+            }
+
+            result.description = metrics.description;
+
+            result.average_duration = metrics.average_duration().count();
+            result.success_rate = metrics.success_rate();
+            result.error_rate = metrics.error_rate();
+        }
+
+        success(resp, result);
+    }
+    catch (const std::exception& e)
+    {
+        error(resp, INTERNAL_SERVER_ERROR_CODE, e);
+    }
+}
 
 void Controller::get_job_count(const httplib::Request& req,
                                httplib::Response& resp)

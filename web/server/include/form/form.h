@@ -74,6 +74,65 @@ inline void from_json(const nlohmann::json& j, IDForm& params)
     j.at("id").get_to(params.id);
 }
 
+struct Metrics
+{
+    size_t execution_count;
+    size_t success_count;
+    size_t error_count;
+
+    std::string last_run_time;
+    int64_t last_duration;
+    int64_t total_duration;
+
+    int64_t max_duration;
+    int64_t min_duration;
+
+    std::vector<std::string> success_times;
+    std::vector<std::string> error_times;
+
+    std::string description;
+
+    int64_t average_duration;
+    double success_rate;
+    double error_rate;
+};
+
+inline void to_json(nlohmann::json& j, const Metrics& metrics)
+{
+    j = nlohmann::json{{"execution_count", metrics.execution_count},
+                       {"success_count", metrics.success_count},
+                       {"error_count", metrics.error_count},
+                       {"last_run_time", metrics.last_run_time},
+                       {"last_duration", metrics.last_duration},
+                       {"total_duration", metrics.total_duration},
+                       {"max_duration", metrics.max_duration},
+                       {"min_duration", metrics.min_duration},
+                       {"success_times", metrics.success_times},
+                       {"error_times", metrics.error_times},
+                       {"description", metrics.description},
+                       {"average_duration", metrics.average_duration},
+                       {"success_rate", metrics.success_rate},
+                       {"error_rate", metrics.error_rate}};
+}
+
+inline void from_json(const nlohmann::json& j, Metrics& metrics)
+{
+    j.at("execution_count").get_to(metrics.execution_count);
+    j.at("success_count").get_to(metrics.success_count);
+    j.at("error_count").get_to(metrics.error_count);
+    j.at("last_run_time").get_to(metrics.last_run_time);
+    j.at("last_duration").get_to(metrics.last_duration);
+    j.at("total_duration").get_to(metrics.total_duration);
+    j.at("max_duration").get_to(metrics.max_duration);
+    j.at("min_duration").get_to(metrics.min_duration);
+    j.at("success_times").get_to(metrics.success_times);
+    j.at("error_times").get_to(metrics.error_times);
+    j.at("description").get_to(metrics.description);
+    j.at("average_duration").get_to(metrics.average_duration);
+    j.at("success_rate").get_to(metrics.success_rate);
+    j.at("error_rate").get_to(metrics.error_rate);
+}
+
 inline std::chrono::system_clock::time_point parse_iso_time(
     const std::string& iso_time)
 {
@@ -81,6 +140,15 @@ inline std::chrono::system_clock::time_point parse_iso_time(
     std::istringstream ss(iso_time);
     ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
     return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+}
+
+inline std::string to_iso_time(const std::chrono::system_clock::time_point& tp)
+{
+    std::time_t time = std::chrono::system_clock::to_time_t(tp);
+    std::tm tm = *std::localtime(&time);
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
+    return oss.str();
 }
 
 inline std::string force_http(std::string url)
